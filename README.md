@@ -6,7 +6,7 @@ Claude Code skill: ticket-driven software process.
 - **dev-lead / tester-lead**: leads (default Sonnet/xhigh); plan, create tickets, dispatch workers, review, merge.
 - **dev / tester**: workers, one ticket each, in their own git worktree. Level per ticket: junior (Haiku/max) by default; each reopen raises it one step to middle (Sonnet/xhigh), then senior (Opus/medium, cap). A reopen requires a context summary.
 - **Models**: `.claude/slow-but-sure.models.json` (created on first `/slow-but-sure on`) sets model + effort for the leads and the three levels, and the PM model. `/slow-but-sure models` shows the table. The PM model is written to `.claude/settings.local.json` while ON and restored on OFF; PM effort is yours to set with `/effort`.
-- **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`.
+- **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `board init` writes `tickets/README.md` describing statuses, who moves what when, reopen and levels.
 - **Tests**: unit tests by dev; Playwright e2e in `tests/e2e/` by testers (`getByTestId`, ticket comment per test). Testers are hook-blocked from editing product code.
 - **Conventions**: on the first ticketed request the PM writes `docs/conventions.md` from `templates/conventions.md`, filled from the real codebase; leads pass it to every worker.
 - **/sbs-context**: table of the PM and every subagent in this session: model (effort), current context size, output tokens, state (running only; `--all` adds finished ones). Read from the session transcripts.
@@ -46,6 +46,7 @@ template/.claude/
   skills/slow-but-sure/SKILL.md        PM process
   skills/slow-but-sure/scripts/board.mjs
   skills/slow-but-sure/templates/conventions.md   starting point for docs/conventions.md
+  skills/slow-but-sure/templates/tickets-README.md   copied to tickets/README.md by board init
   skills/slow-but-sure/scripts/context.mjs   used by /sbs-context
   skills/sbs-context/SKILL.md          /sbs-context command
   agents/{dev-lead,dev,tester-lead,tester}.md

@@ -90,6 +90,7 @@ const COUNTERS = path.join(TICKETS, '.counters.json');
 const FLAG = path.join(ROOT, '.claude', 'slow-but-sure.on');
 const MODELS_FILE = path.join(ROOT, '.claude', 'slow-but-sure.models.json');
 const LOCAL_SETTINGS = path.join(ROOT, '.claude', 'settings.local.json');
+const README_TEMPLATE = new URL('../templates/tickets-README.md', import.meta.url);
 
 function now() {
   const d = new Date();
@@ -252,6 +253,8 @@ function cmdInit() {
   const cfg = path.join(TICKETS, 'config.json');
   if (!fs.existsSync(cfg)) writeJSON(cfg, DEFAULT_CONFIG);
   if (!fs.existsSync(COUNTERS)) writeJSON(COUNTERS, {});
+  const readme = path.join(TICKETS, 'README.md');
+  if (!fs.existsSync(readme) && fs.existsSync(README_TEMPLATE)) fs.copyFileSync(README_TEMPLATE, readme);
   console.log(`board ready: ${path.relative(process.cwd(), TICKETS) || '.'} (${STATUSES.join(', ')})`);
 }
 
