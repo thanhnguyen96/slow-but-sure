@@ -32,8 +32,8 @@ Check the available-skills list. If any of them is missing, stop and tell the us
 
 ## Arguments
 
-- `on`: run `board mode on`. It creates `.claude/slow-but-sure.models.json` on first run, writes the PM model to `.claude/settings.local.json`, and prints the model table. Show the table, tell the user the process is ON until `/slow-but-sure off` and that they can edit that file to change models/effort. Say nothing about the PM model or effort.
-- `off`: run `board mode off` (restores the previous PM model). Afterwards behave as a normal assistant.
+- `on`: run `board mode on`. It creates `.claude/slow-but-sure.models.json` on first run (leads and worker levels only) and prints the model table. Show the table, tell the user the process is ON until `/slow-but-sure off` and that they can edit that file to change models/effort. Say nothing about the PM model or effort; the user sets those in the terminal.
+- `off`: run `board mode off`. Afterwards behave as a normal assistant.
 - `status`: run `board mode status` and `board list`.
 - `board`: run `board list` and summarize per status.
 - `models`: run `board models` and show its table. To change a value, edit `.claude/slow-but-sure.models.json` (or do it for the user), then run `board models` again.
@@ -43,7 +43,7 @@ Check the available-skills list. If any of them is missing, stop and tell the us
 
 | Role | Agent | Default model / effort | Writes | Moves tickets |
 |---|---|---|---|---|
-| PM | main conversation (you) | opus / user's `/effort` | `docs/specs/**`, mockups, small no-ticket fixes | creates BUG after triage; `dev` → `master` merge after Gate 3 |
+| PM | main conversation (you) | user's own `/model` and `/effort` (not in the config) | `docs/specs/**`, mockups, small no-ticket fixes | creates BUG after triage; `dev` → `master` merge after Gate 3 |
 | dev lead | `dev-lead` | sonnet / xhigh | plan.md, dev tickets, merges | dev tickets: todo → in-progress → ready-to-test |
 | dev | `dev` (worker) | by level | product code and unit tests in its own worktree | never |
 | tester lead | `tester-lead` | sonnet / xhigh | test tickets, merges | TEST tickets, and dev tickets ready-to-test → done |

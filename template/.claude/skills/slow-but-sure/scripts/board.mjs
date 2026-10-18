@@ -19,9 +19,9 @@ const DEFAULT_CONFIG = {
   commands: { unit: '', build: '', lint: '', e2e: 'npx playwright test', app: '' },
   testerWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/specs/*/test-plan.md', 'tickets/*/TEST-*.md'],
 };
-// Model + effort per role and per worker level. Users edit .claude/slow-but-sure.models.json.
+// Model + effort per subagent role and per worker level. Users edit .claude/slow-but-sure.models.json.
+// The PM is the main conversation: its model and effort are the user's own (/model, /effort).
 const DEFAULT_MODELS = {
-  pm: { model: 'opus' }, // effort: set it yourself in the terminal with /effort
   'dev-lead': { model: 'sonnet', effort: 'xhigh' },
   'tester-lead': { model: 'sonnet', effort: 'xhigh' },
   levels: {
@@ -31,7 +31,6 @@ const DEFAULT_MODELS = {
   },
 };
 const MODEL_ROWS = [
-  ['pm', (m) => m.pm, 'main conversation: triage, grilling, mockups, gates'],
   ['dev-lead', (m) => m['dev-lead'], 'plan, dev tickets, review, merge'],
   ['tester-lead', (m) => m['tester-lead'], 'TEST tickets, review, merge, regression'],
   ['junior', (m) => m.levels.junior, 'dev/tester workers, default level'],
@@ -89,7 +88,6 @@ const TICKETS = path.join(ROOT, 'tickets');
 const COUNTERS = path.join(TICKETS, '.counters.json');
 const FLAG = path.join(ROOT, '.claude', 'slow-but-sure.on');
 const MODELS_FILE = path.join(ROOT, '.claude', 'slow-but-sure.models.json');
-const LOCAL_SETTINGS = path.join(ROOT, '.claude', 'settings.local.json');
 const README_TEMPLATE = new URL('../templates/tickets-README.md', import.meta.url);
 
 function now() {
@@ -377,15 +375,14 @@ function loadModels() {
   let raw;
   try { raw = JSON.parse(fs.readFileSync(MODELS_FILE, 'utf8')); } catch (e) { die(`cannot parse ${MODELS_FILE}: ${e.message}`); }
   const m = {
-    ...DEFAULT_MODELS, ...raw,
+    'dev-lead': raw['dev-lead'] || DEFAULT_MODELS['dev-lead'],
+    'tester-lead': raw['tester-lead'] || DEFAULT_MODELS['tester-lead'],
     levels: { ...DEFAULT_MODELS.levels, ...(raw.levels || {}) },
   };
   for (const [name, get] of MODEL_ROWS) {
     const v = get(m) || {};
-    // PM goes to settings (any model id); subagents go through the Agent tool (aliases only).
-    const okModel = name === 'pm' ? typeof v.model === 'string' && v.model : AGENT_MODELS.includes(v.model);
-    if (!okModel) die(`${name}.model '${v.model}' invalid in ${MODELS_FILE}. Use one of ${AGENT_MODELS.join(', ')}`);
-    if (name !== 'pm' && !EFFORTS.includes(v.effort)) die(`${name}.effort '${v.effort}' invalid. Use one of ${EFFORTS.join(', ')}`);
+    if (!AGENT_MODELS.includes(v.model)) die(`${name}.model '${v.model}' invalid in ${MODELS_FILE}. Use one of ${AGENT_MODELS.join(', ')}`);
+    if (!EFFORTS.includes(v.effort)) die(`${name}.effort '${v.effort}' invalid. Use one of ${EFFORTS.join(', ')}`);
   }
   return m;
 }
@@ -396,50 +393,25 @@ function printModels(m) {
   for (const [name, get, use] of MODEL_ROWS) {
     const v = get(m);
     const model = `${v.model}${MODEL_NOTES[v.model] ? ` (${MODEL_NOTES[v.model]})` : ''}`;
-    const effort = name === 'pm' ? '(yours, via /effort)' : `${v.effort} (${EFFORT_NOTES[v.effort]})`;
+    const effort = `${v.effort} (${EFFORT_NOTES[v.effort]})`;
     console.log(`  ${name.padEnd(12)} ${model.padEnd(26)} ${effort.padEnd(26)} ${use}`);
   }
   console.log('  Workers start at junior; each reopen of a ticket raises it one level, up to senior.');
-}
-
-// PM = the main conversation, so its model lives in .claude/settings.local.json while ON (effort is the user's own /effort).
-// The value that was there before is kept in the flag file and restored on `mode off`.
-function applyPM(m) {
-  const flag = readJSON(FLAG, null);
-  const settings = readJSON(LOCAL_SETTINGS, {});
-  const prev = flag?.prev ?? { model: settings.model ?? null };
-  if (m.pm.model === 'inherit') delete settings.model; else settings.model = m.pm.model;
-  writeJSON(LOCAL_SETTINGS, settings);
-  writeJSON(FLAG, { enabled: flag?.enabled ?? now(), prev });
-}
-
-function restorePM() {
-  const flag = readJSON(FLAG, null);
-  if (!flag?.prev) return;
-  const settings = readJSON(LOCAL_SETTINGS, {});
-  for (const k of Object.keys(flag.prev)) {
-    if (flag.prev[k] === null) delete settings[k]; else settings[k] = flag.prev[k];
-  }
-  writeJSON(LOCAL_SETTINGS, settings);
-  console.log('PM model restored in .claude/settings.local.json');
 }
 
 function cmdModels(flags) {
   const m = loadModels();
   if (flags.json) return console.log(JSON.stringify(m, null, 2));
   printModels(m);
-  if (fs.existsSync(FLAG)) applyPM(m);
 }
 
 function cmdMode(pos) {
   const v = pos[0] || 'status';
   if (v === 'on') {
     fs.mkdirSync(path.dirname(FLAG), { recursive: true });
-    const m = loadModels();
-    applyPM(m);
-    printModels(m);
+    if (!fs.existsSync(FLAG)) fs.writeFileSync(FLAG, `enabled ${now()}\n`);
+    printModels(loadModels());
   } else if (v === 'off') {
-    restorePM();
     fs.rmSync(FLAG, { force: true });
   } else if (v !== 'status') {
     die('usage: mode <on|off|status>');
