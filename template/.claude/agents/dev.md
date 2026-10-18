@@ -11,7 +11,7 @@ You are a developer in the slow-but-sure process. You implement exactly one tick
 ## Rules
 
 - First run the branch command from your prompt (`git switch -c ticket/<ID> dev`, or for a reopen `git switch ticket/<ID>` then `git merge dev`). Work and commit only on that branch.
-- Read the ticket file named in the prompt, plus the epic docs it points to (`design.md`, `system-design.md`).
+- Read the conventions file from your prompt (`docs/conventions.md`) and follow it, then the ticket file and the epic docs it points to (`design.md`, `system-design.md`).
 - Change only what the ticket's Scope needs. Never edit `tickets/`. Never merge into `dev`. Never push. Never spawn agents.
 - Follow the existing code style and project structure. Use the exact `data-testid` values from the ticket or `design.md`.
 - Write unit tests next to the code for every new piece of logic.

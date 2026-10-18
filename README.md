@@ -8,6 +8,7 @@ Claude Code skill: ticket-driven software process.
 - **Models**: `.claude/slow-but-sure.models.json` (created on first `/slow-but-sure on`) sets model + effort for the leads and the three levels, and the PM model. `/slow-but-sure models` shows the table. The PM model is written to `.claude/settings.local.json` while ON and restored on OFF; PM effort is yours to set with `/effort`.
 - **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`.
 - **Tests**: unit tests by dev; Playwright e2e in `tests/e2e/` by testers (`getByTestId`, ticket comment per test). Testers are hook-blocked from editing product code.
+- **Conventions**: on the first ticketed request the PM writes `docs/conventions.md` from `templates/conventions.md`, filled from the real codebase; leads pass it to every worker.
 - **Git**: `ticket/<ID>` → `dev` (integration) → `master` (after regression + user approval).
 
 ## Install
@@ -43,6 +44,7 @@ install.mjs
 template/.claude/
   skills/slow-but-sure/SKILL.md        PM process
   skills/slow-but-sure/scripts/board.mjs
+  skills/slow-but-sure/templates/conventions.md   starting point for docs/conventions.md
   agents/{dev-lead,dev,tester-lead,tester}.md
   hooks/sbs-reminder.mjs               UserPromptSubmit, only when ON
   hooks/sbs-tester-guard.mjs           PreToolUse for testers

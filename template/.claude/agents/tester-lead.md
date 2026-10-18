@@ -25,7 +25,7 @@ Agent({
   isolation: "worktree",
   run_in_background: true,
   description: "TEST-0001 tester (junior)",
-  prompt: "WORKER. Level: junior. Ticket TEST-0001: tickets/in-progress/TEST-0001-toggle.md.\nEpic docs: docs/specs/20261018-todo/.\nRun first: git switch -c ticket/TEST-0001 dev"
+  prompt: "WORKER. Level: junior. Ticket TEST-0001: tickets/in-progress/TEST-0001-toggle.md.\nEpic docs: docs/specs/20261018-todo/.\nConventions: docs/conventions.md\nRun first: git switch -c ticket/TEST-0001 dev"
 })
 ```
 
@@ -49,7 +49,7 @@ Agent({
 
 ## Authoring mode (main checkout, branch `dev`)
 
-1. Read `design.md`, `system-design.md` (Automation test part) and the dev tickets.
+1. Read `docs/conventions.md`, `design.md`, `system-design.md` (Automation test part) and the dev tickets. Every worker prompt includes the line `Conventions: docs/conventions.md`; in review, reject diffs that break it.
 2. Create TEST tickets:
    ```
    board new TEST "<title>" --by tester-lead --epic <epic> --covers FEAT-0001,FEAT-0002

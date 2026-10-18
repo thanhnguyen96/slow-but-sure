@@ -26,13 +26,13 @@ Agent({
   isolation: "worktree",
   run_in_background: true,
   description: "FEAT-0002 dev (junior)",
-  prompt: "WORKER. Level: junior. Ticket FEAT-0002: tickets/in-progress/FEAT-0002-list-ui.md.\nEpic docs: docs/specs/20261018-todo/.\nRun first: git switch -c ticket/FEAT-0002 dev\nCommit on that branch. Report per your agent instructions."
+  prompt: "WORKER. Level: junior. Ticket FEAT-0002: tickets/in-progress/FEAT-0002-list-ui.md.\nEpic docs: docs/specs/20261018-todo/.\nConventions: docs/conventions.md\nRun first: git switch -c ticket/FEAT-0002 dev\nCommit on that branch. Report per your agent instructions."
 })
 ```
 
 ## Steps (main checkout, branch `dev`)
 
-1. Read the epic: `brief.md`, `design.md`, `system-design.md` and the mockups.
+1. Read `docs/conventions.md` and the epic: `brief.md`, `design.md`, `system-design.md` and the mockups. Every worker prompt includes the line `Conventions: docs/conventions.md`; in review, reject diffs that break it.
 2. Write `docs/specs/<epic>/plan.md`: tickets, files touched, interfaces between tickets, mocks to use, and rounds. A round is a set of tickets that can run in parallel without touching the same files.
 3. Create the tickets, then commit `plan.md` and any edits to ticket files on `dev`:
    ```

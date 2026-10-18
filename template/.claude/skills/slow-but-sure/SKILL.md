@@ -96,6 +96,7 @@ Questions, explanations, config tweaks, typos and one-file small fixes get no ti
 2. If branch `dev` is missing, create it from `master`: `git branch dev master`.
 3. Switch the main checkout to `dev`. Specs and tickets are committed there.
 4. Fill in `tickets/config.json` `commands` (unit, build, lint, e2e, app) by inspecting the project. Ask the user only about real choices. For a web project with no Playwright yet, the INIT or first FEAT epic includes setting it up.
+5. If `docs/conventions.md` is missing, create it from `.claude/skills/slow-but-sure/templates/conventions.md`. Fill every `<...>` from the real codebase (package files, lint/format config, existing code and tests, CONTRIBUTING/CLAUDE.md); for a new project, use the stack decided in the brief. Remove sections that don't apply. Ask the user only when the code doesn't show the answer and it is a real choice. Commit it on `dev`. Leads pass its path to every worker; update it when an epic introduces a new rule.
 
 ## Step 2: clarify (grilling)
 
@@ -147,8 +148,8 @@ Add a rough implementation plan: an ordered list of work chunks, with notes on w
 
 Launch both leads in parallel, in one message, with `run_in_background: true` and their `model`/`effort` from `board models --json`:
 
-- **dev-lead:** "Epic `docs/specs/<epic>/`. Write `plan.md`, create dev tickets, run rounds with workers until every dev ticket is in ready-to-test. Report back."
-- **tester-lead:** "Epic `docs/specs/<epic>/`. Create TEST tickets covering each dev ticket, have workers write Playwright tests against design.md, merge them, and report back. Do not run regression yet."
+- **dev-lead:** "Epic `docs/specs/<epic>/`. Conventions: `docs/conventions.md`. Write `plan.md`, create dev tickets, run rounds with workers until every dev ticket is in ready-to-test. Report back."
+- **tester-lead:** "Epic `docs/specs/<epic>/`. Conventions: `docs/conventions.md`. Create TEST tickets covering each dev ticket, have workers write Playwright tests against design.md, merge them, and report back. Do not run regression yet."
 
 While they work, answer the user, and relay any questions the leads raise. If a lead returns a question, decide it yourself or ask the user, then resume that lead with SendMessage.
 
@@ -181,5 +182,5 @@ Ask whether to merge `dev` into `master`. Only after a yes: `git checkout master
 ## PM rules
 
 - Inside the ticket process, never write product code or e2e tests yourself.
-- Pass leads paths to the specs, not pasted copies.
+- Pass leads paths to the specs and to `docs/conventions.md`, not pasted copies.
 - Keep the user informed at gates and when something is blocked. Do not narrate every subagent step.
