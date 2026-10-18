@@ -54,7 +54,7 @@ The board script is `node .claude/skills/slow-but-sure/scripts/board.mjs`, calle
 2. If everything passes on the first run, move every ready-to-test TEST ticket and every dev ticket they cover to `done` (`--by senior-tester`).
 3. For each failure, read the error, trace and screenshot, then compare the spec, the test and the app:
    - **Test-caused** (wrong locator, wrong expectation versus the spec, flaky wait):
-     1. Run `board move <TEST-ID> in-progress --by senior-tester --note "<why>"`.
+     1. Reopen the existing TEST ticket that owns the failing test (the id in its `// Ticket:` comment), even if it is already in `done`: `board move <TEST-ID> in-progress --by senior-tester --assignee junior-tester --note "<why>"`. Don't create a new TEST ticket for a fix.
      2. Have a junior-tester fix it in a worktree, then merge it.
      3. Move the TEST ticket back to `ready-to-test` and rerun.
    - **Dev-caused** (the app doesn't meet `design.md` or the acceptance criteria): don't touch the code. Add evidence to the ticket with `board note <DEV-ID> "<summary>" --by senior-tester`, and report to the PM.

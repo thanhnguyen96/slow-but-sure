@@ -139,7 +139,7 @@ When senior-dev reports all dev tickets in ready-to-test and senior-tester repor
 senior-tester handles failures as follows:
 
 - **Pass on the first run:** it moves the TEST tickets and the covered dev tickets to `done`.
-- **Test-caused failure:** it moves the TEST ticket back to `in-progress`, has a junior-tester fix it, and reruns.
+- **Test-caused failure:** it reopens the TEST ticket that owns the test (even from `done`) and moves it back to `in-progress`, has a junior-tester fix it, and reruns.
 - **Dev-caused failure:** it reports to you with evidence (test name, ticket, error, trace or screenshot path). You create `board new BUG "<title>" --by pm --epic <epic> --depends <FEAT-ID>` with that evidence in Context, and send it to senior-dev. After the fix reaches ready-to-test, send senior-tester to rerun.
 - **Unclear cause:** it reports to you. Compare against `design.md` and the acceptance criteria. If the spec is ambiguous, ask the user with AskUserQuestion, then route the failure as a test or dev failure.
 
