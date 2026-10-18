@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const TESTER_AGENTS = ['senior-tester', 'junior-tester'];
+const TESTER_AGENTS = ['tester-lead', 'tester'];
 const DEFAULT_WRITABLE = ['tests/e2e/**', 'playwright.config.*', 'docs/specs/*/test-plan.md', 'tickets/*/TEST-*.md'];
 
 let raw = '';

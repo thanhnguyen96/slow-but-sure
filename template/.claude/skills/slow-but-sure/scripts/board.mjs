@@ -7,8 +7,11 @@ import { execFileSync } from 'node:child_process';
 
 const STATUSES = ['todo', 'in-progress', 'ready-to-test', 'done'];
 const TYPES = ['FEAT', 'BUG', 'REF', 'INIT', 'TEST'];
-const ROLES = ['pm', 'senior-dev', 'junior-dev', 'senior-tester', 'junior-tester', 'user'];
-const FM_KEYS = ['id', 'type', 'title', 'epic', 'created', 'updated', 'status', 'assigner', 'assignee', 'branch', 'depends_on', 'covers'];
+const ROLES = ['pm', 'dev-lead', 'dev', 'tester-lead', 'tester', 'user'];
+const LEVELS = ['junior', 'middle', 'senior'];
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable', 'inherit'];
+const FM_KEYS = ['id', 'type', 'title', 'epic', 'created', 'updated', 'status', 'assigner', 'assignee', 'level', 'branch', 'depends_on', 'covers'];
 const DEFAULT_CONFIG = {
   integrationBranch: 'dev',
   releaseBranch: 'master',
@@ -16,15 +19,38 @@ const DEFAULT_CONFIG = {
   commands: { unit: '', build: '', lint: '', e2e: 'npx playwright test', app: '' },
   testerWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/specs/*/test-plan.md', 'tickets/*/TEST-*.md'],
 };
+// Model + effort per role and per worker level. Users edit .claude/slow-but-sure.models.json.
+const DEFAULT_MODELS = {
+  pm: { model: 'opus', effort: 'high' },
+  'dev-lead': { model: 'sonnet', effort: 'high' },
+  'tester-lead': { model: 'sonnet', effort: 'high' },
+  levels: {
+    junior: { model: 'haiku', effort: 'max' },
+    middle: { model: 'sonnet', effort: 'xhigh' },
+    senior: { model: 'opus', effort: 'medium' },
+  },
+};
+const MODEL_ROWS = [
+  ['pm', (m) => m.pm, 'main conversation: triage, grilling, mockups, gates'],
+  ['dev-lead', (m) => m['dev-lead'], 'plan, dev tickets, review, merge'],
+  ['tester-lead', (m) => m['tester-lead'], 'TEST tickets, review, merge, regression'],
+  ['junior', (m) => m.levels.junior, 'dev/tester workers, default level'],
+  ['middle', (m) => m.levels.middle, 'workers on a ticket reopened once'],
+  ['senior', (m) => m.levels.senior, 'workers on a ticket reopened 2+ times (cap)'],
+];
+const MODEL_NOTES = { haiku: 'fastest, cheapest', sonnet: 'balanced', opus: 'strongest reasoning', inherit: 'same as caller' };
+const EFFORT_NOTES = { low: 'quick', medium: 'balanced', high: 'careful', xhigh: 'very careful', max: 'deepest, slowest' };
 
 const USAGE = `usage:
   board init
-  board new <${TYPES.join('|')}> "<title>" --by <role> [--epic <dir>] [--assignee <role>] [--depends ID,ID] [--covers ID,ID] [--no-commit]
-  board move <ID> <${STATUSES.join('|')}> --by <role> [--assignee <role>] [--note "..."] [--no-commit]
+  board new <${TYPES.join('|')}> "<title>" --by <role> [--epic <dir>] [--assignee <role>] [--level <${LEVELS.join('|')}>] [--depends ID,ID] [--covers ID,ID] [--no-commit]
+  board move <ID> <${STATUSES.join('|')}> --by <role> [--assignee <role>] [--level <lvl>] [--note "..."] [--no-commit]
+      (moving a ticket back to in-progress after it left it = reopen: --note required, level goes up one step)
   board note <ID> "<text>" --by <role> [--no-commit]
   board list [status] [--epic <dir>] [--type <TYPE>]
+  board models [--json]          show (and create on first run) .claude/slow-but-sure.models.json
   board mode <on|off|status>
-roles: ${ROLES.join(', ')}`;
+roles: ${ROLES.join(', ')}   levels: ${LEVELS.join(', ')}`;
 
 function die(msg) {
   console.error(`board: ${msg}`);
@@ -62,6 +88,8 @@ const ROOT = findRoot();
 const TICKETS = path.join(ROOT, 'tickets');
 const COUNTERS = path.join(TICKETS, '.counters.json');
 const FLAG = path.join(ROOT, '.claude', 'slow-but-sure.on');
+const MODELS_FILE = path.join(ROOT, '.claude', 'slow-but-sure.models.json');
+const LOCAL_SETTINGS = path.join(ROOT, '.claude', 'settings.local.json');
 
 function now() {
   const d = new Date();
@@ -91,6 +119,11 @@ function config() {
 function role(r) {
   if (!ROLES.includes(r)) die(`unknown role '${r}'. roles: ${ROLES.join(', ')}`);
   return r;
+}
+
+function level(l) {
+  if (!LEVELS.includes(l)) die(`unknown level '${l}'. levels: ${LEVELS.join(', ')}`);
+  return l;
 }
 
 function idList(v) {
@@ -245,6 +278,7 @@ function cmdNew(pos, flags) {
     created: ts, updated: ts, status: 'todo',
     assigner: by,
     assignee: typeof flags.assignee === 'string' ? role(flags.assignee) : '',
+    level: typeof flags.level === 'string' ? level(flags.level) : 'junior',
     branch: `ticket/${id}`,
     depends_on: idList(flags.depends),
     covers: idList(flags.covers),
@@ -266,9 +300,20 @@ function cmdMove(pos, flags) {
   const t = findTicket(id);
   const { fm, body } = parseTicket(t.file);
   const ts = now();
+  // Reopen = back to in-progress after having left it. Needs a context summary and raises the level.
+  const reopen = to === 'in-progress' && t.status !== 'in-progress' && /-> in-progress/.test(body);
+  if (reopen && typeof flags.note !== 'string') {
+    die(`${fm.id} is being reopened: --note "<context summary: what failed, evidence, what was tried>" is required`);
+  }
+  const prevLevel = LEVELS.includes(fm.level) ? fm.level : 'junior';
+  if (typeof flags.level === 'string') fm.level = level(flags.level);
+  else if (reopen) fm.level = LEVELS[Math.min(LEVELS.indexOf(prevLevel) + 1, LEVELS.length - 1)];
+  else fm.level = prevLevel;
   fm.status = to;
   fm.updated = ts;
   let line = `${ts} — ${t.status} -> ${to} by ${by}`;
+  if (reopen) line += ` (reopened, level ${prevLevel} -> ${fm.level})`;
+  else if (fm.level !== prevLevel) line += ` (level ${prevLevel} -> ${fm.level})`;
   if (typeof flags.assignee === 'string') {
     fm.assignee = role(flags.assignee);
     line += ` (assignee: ${fm.assignee})`;
@@ -278,7 +323,7 @@ function cmdMove(pos, flags) {
   fs.writeFileSync(t.file, renderTicket(fm, appendHistory(body, line)));
   if (dest !== t.file) fs.renameSync(t.file, dest);
   commit([t.file, dest], `board: ${fm.id} ${t.status} -> ${to}`, flags);
-  console.log(`${fm.id}: ${t.status} -> ${to}`);
+  console.log(`${fm.id}: ${t.status} -> ${to}${reopen ? ` (reopened, level ${prevLevel} -> ${fm.level})` : ''}  level: ${fm.level}`);
 }
 
 function cmdNote(pos, flags) {
@@ -312,17 +357,89 @@ function cmdList(pos, flags) {
     console.log(`\n${status} (${group.length})`);
     for (const r of group) {
       const extra = (r.covers ? `  [covers ${r.covers}]` : '') + (r.depends_on ? `  [after ${r.depends_on}]` : '');
-      console.log(`  ${r.id.padEnd(10)} ${(r.assignee || '-').padEnd(14)} ${r.title}${extra}`);
+      const who = `${r.assignee || '-'}/${r.level || 'junior'}`;
+      console.log(`  ${r.id.padEnd(10)} ${who.padEnd(18)} ${r.title}${extra}`);
     }
   }
+}
+
+// ---------- models ----------
+
+function loadModels() {
+  if (!fs.existsSync(MODELS_FILE)) {
+    fs.mkdirSync(path.dirname(MODELS_FILE), { recursive: true });
+    writeJSON(MODELS_FILE, DEFAULT_MODELS);
+    console.log(`created ${path.relative(ROOT, MODELS_FILE)} (edit it to change models/effort)`);
+  }
+  let raw;
+  try { raw = JSON.parse(fs.readFileSync(MODELS_FILE, 'utf8')); } catch (e) { die(`cannot parse ${MODELS_FILE}: ${e.message}`); }
+  const m = {
+    ...DEFAULT_MODELS, ...raw,
+    levels: { ...DEFAULT_MODELS.levels, ...(raw.levels || {}) },
+  };
+  for (const [name, get] of MODEL_ROWS) {
+    const v = get(m) || {};
+    // PM goes to settings (any model id); subagents go through the Agent tool (aliases only).
+    const okModel = name === 'pm' ? typeof v.model === 'string' && v.model : AGENT_MODELS.includes(v.model);
+    if (!okModel) die(`${name}.model '${v.model}' invalid in ${MODELS_FILE}. Use one of ${AGENT_MODELS.join(', ')}`);
+    if (!EFFORTS.includes(v.effort)) die(`${name}.effort '${v.effort}' invalid. Use one of ${EFFORTS.join(', ')}`);
+    if (name === 'pm' && v.effort === 'max') die(`pm.effort cannot be 'max' (settings only accept up to xhigh; use /effort max in-session instead)`);
+  }
+  return m;
+}
+
+function printModels(m) {
+  console.log(`slow-but-sure models (${path.relative(ROOT, MODELS_FILE).split(path.sep).join('/')})`);
+  console.log(`  ${'ROLE'.padEnd(12)} ${'MODEL'.padEnd(26)} ${'EFFORT'.padEnd(26)} USED FOR`);
+  for (const [name, get, use] of MODEL_ROWS) {
+    const v = get(m);
+    const model = `${v.model}${MODEL_NOTES[v.model] ? ` (${MODEL_NOTES[v.model]})` : ''}`;
+    const effort = `${v.effort} (${EFFORT_NOTES[v.effort]})`;
+    console.log(`  ${name.padEnd(12)} ${model.padEnd(26)} ${effort.padEnd(26)} ${use}`);
+  }
+  console.log('  Workers start at junior; each reopen of a ticket raises it one level, up to senior.');
+}
+
+// PM = the main conversation, so its model/effort live in .claude/settings.local.json while ON.
+// The values that were there before are kept in the flag file and restored on `mode off`.
+function applyPM(m) {
+  const flag = readJSON(FLAG, null);
+  const settings = readJSON(LOCAL_SETTINGS, {});
+  const prev = flag?.prev ?? { model: settings.model ?? null, effortLevel: settings.effortLevel ?? null };
+  if (m.pm.model === 'inherit') delete settings.model; else settings.model = m.pm.model;
+  settings.effortLevel = m.pm.effort;
+  writeJSON(LOCAL_SETTINGS, settings);
+  writeJSON(FLAG, { enabled: flag?.enabled ?? now(), prev });
+  console.log(`PM: ${m.pm.model}/${m.pm.effort} written to .claude/settings.local.json (next start; in this session: /model ${m.pm.model}, /effort ${m.pm.effort})`);
+}
+
+function restorePM() {
+  const flag = readJSON(FLAG, null);
+  if (!flag?.prev) return;
+  const settings = readJSON(LOCAL_SETTINGS, {});
+  for (const k of ['model', 'effortLevel']) {
+    if (flag.prev[k] === null) delete settings[k]; else settings[k] = flag.prev[k];
+  }
+  writeJSON(LOCAL_SETTINGS, settings);
+  console.log('PM model/effort restored in .claude/settings.local.json');
+}
+
+function cmdModels(flags) {
+  const m = loadModels();
+  if (flags.json) return console.log(JSON.stringify(m, null, 2));
+  printModels(m);
+  if (fs.existsSync(FLAG)) applyPM(m);
 }
 
 function cmdMode(pos) {
   const v = pos[0] || 'status';
   if (v === 'on') {
     fs.mkdirSync(path.dirname(FLAG), { recursive: true });
-    fs.writeFileSync(FLAG, `enabled ${now()}\n`);
+    const m = loadModels();
+    applyPM(m);
+    printModels(m);
   } else if (v === 'off') {
+    restorePM();
     fs.rmSync(FLAG, { force: true });
   } else if (v !== 'status') {
     die('usage: mode <on|off|status>');
@@ -338,6 +455,7 @@ switch (cmd) {
   case 'move': cmdMove(pos, flags); break;
   case 'note': cmdNote(pos, flags); break;
   case 'list': cmdList(pos, flags); break;
+  case 'models': cmdModels(flags); break;
   case 'mode': cmdMode(pos); break;
   default: console.log(USAGE); process.exit(cmd ? 1 : 0);
 }

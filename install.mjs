@@ -14,7 +14,10 @@ const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"'
 // Tester guard lives in project settings (not agent frontmatter): frontmatter hooks need the
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
 const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"';
-const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
+const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/settings.local.json', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
+
+// Agent files from older versions (roles were renamed to dev-lead/dev/tester-lead/tester).
+const LEGACY_AGENTS = ['senior-dev', 'junior-dev', 'senior-tester', 'junior-tester'];
 
 const GRILL_REPO = 'mattpocock/skills';
 const GRILL_SHA = '49dd158d1076134a641b33efb035946536778336';
@@ -48,6 +51,16 @@ function copyTree(src, dst) {
     } else {
       fs.copyFileSync(s, d);
       console.log(`  wrote ${path.relative(TARGET, d)}`);
+    }
+  }
+}
+
+function removeLegacyAgents() {
+  for (const name of LEGACY_AGENTS) {
+    const f = path.join(TARGET, '.claude', 'agents', `${name}.md`);
+    if (fs.existsSync(f) && fs.readFileSync(f, 'utf8').includes('slow-but-sure')) {
+      fs.rmSync(f);
+      console.log(`  removed legacy agent ${path.relative(TARGET, f)}`);
     }
   }
 }
@@ -139,6 +152,7 @@ function installOpendesign() {
 
 console.log(`Installing slow-but-sure into ${TARGET}`);
 copyTree(TEMPLATE, TARGET);
+removeLegacyAgents();
 mergeSettings();
 mergeGitignore();
 if (noDeps) {
@@ -155,4 +169,5 @@ console.log(`
 Done. Next:
   1. Review tickets/config.json (commands, integration branch).
   2. Commit the new files; create branch 'dev' if you don't have one.
-  3. Restart Claude Code in the project, then: /slow-but-sure on`);
+  3. Restart Claude Code in the project, then: /slow-but-sure on
+     (creates .claude/slow-but-sure.models.json: model + effort per role/level; /slow-but-sure models to view)`);

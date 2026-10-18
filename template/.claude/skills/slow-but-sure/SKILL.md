@@ -1,7 +1,7 @@
 ---
 name: slow-but-sure
-description: Ticket-driven software process with a PM (main conversation), senior/junior dev and tester subagents, a tickets/ board, per-ticket worktrees and Playwright regression. Use when the user runs /slow-but-sure, says the process is on, or the slow-but-sure reminder hook fires.
-argument-hint: "[on|off|status|board]"
+description: Ticket-driven software process with a PM (main conversation), dev/tester lead and worker subagents (junior/middle/senior levels), a tickets/ board, per-ticket worktrees and Playwright regression. Use when the user runs /slow-but-sure, says the process is on, or the slow-but-sure reminder hook fires.
+argument-hint: "[on|off|status|board|models]"
 ---
 
 # slow-but-sure
@@ -16,6 +16,11 @@ node .claude/skills/slow-but-sure/scripts/board.mjs <init|new|move|note|list|mod
 
 Called below as `board`.
 
+## Talking to the user
+
+- Reply in the language of the user's most recent message. Docs, tickets, code and commit messages stay in English.
+- Every question to the user goes through **AskUserQuestion**: 2–4 concrete options the user can pick directly, recommended option first with "(Recommended)". Don't add an "Other"/"Something else" option; the tool already gives the user a free-text field at the end. Keep option labels short; put trade-offs in the description.
+
 ## Prerequisites
 
 The process needs:
@@ -27,21 +32,34 @@ Check the available-skills list. If any of them is missing, stop and tell the us
 
 ## Arguments
 
-- `on`: run `board mode on`. Tell the user the process is ON for this project until `/slow-but-sure off`.
-- `off`: run `board mode off`. Afterwards behave as a normal assistant.
+- `on`: run `board mode on`. It creates `.claude/slow-but-sure.models.json` on first run, writes the PM model/effort to `.claude/settings.local.json`, and prints the model table. Show the table, tell the user the process is ON until `/slow-but-sure off`, that they can edit that file to change models/effort, and that the PM model applies from the next session (or now with the printed `/model` and `/effort` commands).
+- `off`: run `board mode off` (restores the previous PM model/effort). Afterwards behave as a normal assistant.
 - `status`: run `board mode status` and `board list`.
 - `board`: run `board list` and summarize per status.
+- `models`: run `board models` and show its table. To change a value, edit `.claude/slow-but-sure.models.json` (or do it for the user), then run `board models` again.
 - No argument: treat the rest of the message as a request and run the process below once, without changing the flag.
 
 ## Roles
 
-| Role | Who | Writes | Moves tickets |
-|---|---|---|---|
-| PM | main conversation (you) | `docs/specs/**`, mockups, small no-ticket fixes | creates BUG after triage; `dev` → `master` merge after Gate 3 |
-| senior-dev | Sonnet subagent, lead or worker | product code, unit tests, plan.md, dev tickets | dev tickets: todo → in-progress → ready-to-test |
-| junior-dev | Haiku subagent, worker only | product code and unit tests in its own worktree | never |
-| senior-tester | Sonnet subagent, lead or worker | `tests/e2e/**`, test tickets | TEST tickets, and dev tickets ready-to-test → done |
-| junior-tester | Haiku subagent, worker only | `tests/e2e/**` in its own worktree | never |
+| Role | Agent | Default model / effort | Writes | Moves tickets |
+|---|---|---|---|---|
+| PM | main conversation (you) | opus / high | `docs/specs/**`, mockups, small no-ticket fixes | creates BUG after triage; `dev` → `master` merge after Gate 3 |
+| dev lead | `dev-lead` | sonnet / high | plan.md, dev tickets, merges | dev tickets: todo → in-progress → ready-to-test |
+| dev | `dev` (worker) | by level | product code and unit tests in its own worktree | never |
+| tester lead | `tester-lead` | sonnet / high | test tickets, merges | TEST tickets, and dev tickets ready-to-test → done |
+| tester | `tester` (worker) | by level | `tests/e2e/**` in its own worktree | never |
+
+Worker levels (defaults; real values in `.claude/slow-but-sure.models.json`, see `board models`):
+
+| Level | Model / effort | When |
+|---|---|---|
+| junior | haiku / max | every new ticket |
+| middle | sonnet / xhigh | ticket reopened once |
+| senior | opus / medium | ticket reopened twice or more (cap) |
+
+A ticket's `level` is in its frontmatter. `board move <ID> in-progress` on a ticket that already left `in-progress` is a **reopen**: it requires `--note "<context summary>"` and raises the level one step. Leads spawn workers with the level's `model` and `effort` on the Agent call, and put the context summary at the top of a reopened worker's prompt.
+
+When you spawn a lead, pass `model` and `effort` from `board models --json` (`dev-lead`, `tester-lead`).
 
 Testers are blocked by a hook from writing outside `testerWritable` in `tickets/config.json`.
 
@@ -59,7 +77,7 @@ Testers are blocked by a hook from writing outside `testerWritable` in `tickets/
 
 - `master`: delivered code. It changes only at Gate 3.
 - `dev`: integration branch. Tickets, specs and merged work live here.
-- `ticket/<ID>`: one branch per ticket, created from `dev` inside the worker's worktree, merged into `dev` by the lead senior.
+- `ticket/<ID>`: one branch per ticket, created from `dev` inside the worker's worktree, merged into `dev` by its lead.
 
 ## Step 0: triage (every user message)
 
@@ -83,7 +101,7 @@ Questions, explanations, config tweaks, typos and one-file small fixes get no ti
 
 Invoke the `grilling` skill and interview the user until the request is unambiguous. Override its round format as follows:
 
-- Use **AskUserQuestion**, one decision at a time (up to 4 independent questions per call), never numbered free-text rounds. Put your recommended option first with "(Recommended)".
+- Use **AskUserQuestion** as described in "Talking to the user": one decision at a time (up to 4 independent questions per call), never numbered free-text rounds.
 - Look facts up yourself (codebase, config, docs). Ask the user only for decisions.
 - Cover goal, users, scope in/out, edge cases, error states, data, auth, performance, acceptance criteria, and what "done" looks like.
 
@@ -93,9 +111,11 @@ Create the epic folder `docs/specs/<YYYYMMDD>-<slug>/` and write `brief.md` with
 
 ## Step 3: design (only when UI is created or changed)
 
+Always use the opendesign skills for mockups. Don't ask the user which tool or style to use; match the existing app's look unless the brief says otherwise.
+
 1. Write an idea plan (layout, flows, states) in `design.md`.
-2. Build mockups with the opendesign skills (`opendesign:opendesign`, `opendesign:wireframe` for exploring options, then a polished mock). Put every interactive or asserted element's real `data-testid` in the mock.
-3. Iterate with the user until they are satisfied.
+2. Build mockups with the opendesign skills (`opendesign:opendesign`, `opendesign:wireframe` only if the brief leaves the layout open). Put every interactive or asserted element's real `data-testid` in the mock.
+3. Show the mock briefly. After each version, say only something like "I've updated the mock to match your feedback. Please check it at <link>." (in the user's language), then ask with AskUserQuestion: options "Approve" and "Adjust" (the user types the changes in the free-text field). Don't list the design details again; they are in the mock and `design.md`. Repeat until approved.
 4. Copy the final mockups into `docs/specs/<epic>/mockups/` (the `opendesign/` workspace is gitignored). Stop any preview server you started before leaving this step.
 
 `design.md` must list every page:
@@ -125,22 +145,22 @@ Add a rough implementation plan: an ordered list of work chunks, with notes on w
 
 ## Step 5: implementation
 
-Launch both leads in parallel, in one message, with `run_in_background: true`:
+Launch both leads in parallel, in one message, with `run_in_background: true` and their `model`/`effort` from `board models --json`:
 
-- **senior-dev (lead):** "Epic `docs/specs/<epic>/`. Write `plan.md`, create dev tickets, run rounds with workers until every dev ticket is in ready-to-test. Report back."
-- **senior-tester (lead):** "Epic `docs/specs/<epic>/`. Create TEST tickets covering each dev ticket, have workers write Playwright tests against design.md, merge them, and report back. Do not run regression yet."
+- **dev-lead:** "Epic `docs/specs/<epic>/`. Write `plan.md`, create dev tickets, run rounds with workers until every dev ticket is in ready-to-test. Report back."
+- **tester-lead:** "Epic `docs/specs/<epic>/`. Create TEST tickets covering each dev ticket, have workers write Playwright tests against design.md, merge them, and report back. Do not run regression yet."
 
 While they work, answer the user, and relay any questions the leads raise. If a lead returns a question, decide it yourself or ask the user, then resume that lead with SendMessage.
 
 ## Step 6: regression
 
-When senior-dev reports all dev tickets in ready-to-test and senior-tester reports the tests merged, launch **senior-tester** in regression mode: run the full e2e suite on `dev` and classify every failure.
+When dev-lead reports all dev tickets in ready-to-test and tester-lead reports the tests merged, launch **tester-lead** in regression mode: run the full e2e suite on `dev` and classify every failure.
 
-senior-tester handles failures as follows:
+tester-lead handles failures as follows:
 
 - **Pass on the first run:** it moves the TEST tickets and the covered dev tickets to `done`.
-- **Test-caused failure:** it reopens the TEST ticket that owns the test (even from `done`) and moves it back to `in-progress`, has a junior-tester fix it, and reruns.
-- **Dev-caused failure:** it reports to you with evidence (test name, ticket, error, trace or screenshot path). You create `board new BUG "<title>" --by pm --epic <epic> --depends <FEAT-ID>` with that evidence in Context, and send it to senior-dev. After the fix reaches ready-to-test, send senior-tester to rerun.
+- **Test-caused failure:** it reopens the TEST ticket that owns the test (even from `done`) and moves it back to `in-progress`, has a tester fix it at the raised level, and reruns.
+- **Dev-caused failure:** it reports to you with evidence (test name, ticket, error, trace or screenshot path). You create `board new BUG "<title>" --by pm --epic <epic> --depends <FEAT-ID>` with that evidence in Context, and send it to dev-lead. If the same BUG fails regression again, dev-lead reopens it (level goes up) instead of creating another BUG. After the fix reaches ready-to-test, send tester-lead to rerun.
 - **Unclear cause:** it reports to you. Compare against `design.md` and the acceptance criteria. If the spec is ambiguous, ask the user with AskUserQuestion, then route the failure as a test or dev failure.
 
 Loop until the full suite passes.

@@ -3,8 +3,9 @@
 Claude Code skill: ticket-driven software process.
 
 - **PM**: main conversation (grills the user, designs, coordinates).
-- **senior-dev / senior-tester**: Sonnet leads; plan, create tickets, dispatch workers, review, merge.
-- **junior-dev / junior-tester**: Haiku workers; one ticket each, in their own git worktree.
+- **dev-lead / tester-lead**: leads (default Sonnet/high); plan, create tickets, dispatch workers, review, merge.
+- **dev / tester**: workers, one ticket each, in their own git worktree. Level per ticket: junior (Haiku/max) by default; each reopen raises it one step to middle (Sonnet/xhigh), then senior (Opus/medium, cap). A reopen requires a context summary.
+- **Models**: `.claude/slow-but-sure.models.json` (created on first `/slow-but-sure on`) sets model + effort for PM, leads and the three levels. `/slow-but-sure models` shows the table. The PM's values are written to `.claude/settings.local.json` while ON and restored on OFF.
 - **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`.
 - **Tests**: unit tests by dev; Playwright e2e in `tests/e2e/` by testers (`getByTestId`, ticket comment per test). Testers are hook-blocked from editing product code.
 - **Git**: `ticket/<ID>` → `dev` (integration) → `master` (after regression + user approval).
@@ -26,9 +27,11 @@ Then in the project: restart Claude Code, `/slow-but-sure on`. Turn off with `/s
 ## Board CLI
 
 ```
-node .claude/skills/slow-but-sure/scripts/board.mjs new FEAT "Login page" --by senior-dev --epic 20261018-auth
-node .claude/skills/slow-but-sure/scripts/board.mjs move FEAT-0001 in-progress --by senior-dev --assignee junior-dev
+node .claude/skills/slow-but-sure/scripts/board.mjs new FEAT "Login page" --by dev-lead --epic 20261018-auth
+node .claude/skills/slow-but-sure/scripts/board.mjs move FEAT-0001 in-progress --by dev-lead --assignee dev
+node .claude/skills/slow-but-sure/scripts/board.mjs move FEAT-0001 in-progress --by dev-lead --assignee dev --note "AC2 failed: ..."   # reopen, level +1
 node .claude/skills/slow-but-sure/scripts/board.mjs list
+node .claude/skills/slow-but-sure/scripts/board.mjs models
 ```
 
 Board changes are committed automatically on the integration branch and refused inside linked worktrees.
@@ -40,7 +43,7 @@ install.mjs
 template/.claude/
   skills/slow-but-sure/SKILL.md        PM process
   skills/slow-but-sure/scripts/board.mjs
-  agents/{senior,junior}-{dev,tester}.md
+  agents/{dev-lead,dev,tester-lead,tester}.md
   hooks/sbs-reminder.mjs               UserPromptSubmit, only when ON
   hooks/sbs-tester-guard.mjs           PreToolUse for testers
 ```
