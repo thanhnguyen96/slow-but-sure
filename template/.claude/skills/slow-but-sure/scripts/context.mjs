@@ -28,7 +28,7 @@ if (!sessionId) {
 }
 
 function lastUsage(file) {
-  let model = '?', ctx = 0, out = 0, turns = 0, last = null;
+  let model = '?', effort = '', ctx = 0, out = 0, turns = 0, last = null;
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     if (!line.includes('"usage"')) continue;
     let e;
@@ -36,12 +36,13 @@ function lastUsage(file) {
     const u = e.type === 'assistant' && e.message?.usage;
     if (!u) continue;
     model = e.message.model || model;
+    effort = e.perTurnEffort || e.effort || effort;
     ctx = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
     out += u.output_tokens || 0;
     turns++;
     last = e.timestamp;
   }
-  return { model, ctx, out, turns, last };
+  return { model: effort ? `${model} (${effort})` : model, ctx, out, turns, last };
 }
 
 const k = n => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));

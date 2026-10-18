@@ -9,7 +9,7 @@ Claude Code skill: ticket-driven software process.
 - **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`.
 - **Tests**: unit tests by dev; Playwright e2e in `tests/e2e/` by testers (`getByTestId`, ticket comment per test). Testers are hook-blocked from editing product code.
 - **Conventions**: on the first ticketed request the PM writes `docs/conventions.md` from `templates/conventions.md`, filled from the real codebase; leads pass it to every worker.
-- **/sbs-context**: table of the PM and every subagent in this session: model, current context size, output tokens, state (running only; `--all` adds finished ones). Read from the session transcripts.
+- **/sbs-context**: table of the PM and every subagent in this session: model (effort), current context size, output tokens, state (running only; `--all` adds finished ones). Read from the session transcripts.
 - **Git**: `ticket/<ID>` → `dev` (integration) → `master` (after regression + user approval).
 
 ## Install
