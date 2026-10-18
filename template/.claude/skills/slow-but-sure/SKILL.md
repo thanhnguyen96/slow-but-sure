@@ -175,7 +175,7 @@ Loop until the full suite passes.
 - the suite result (command and pass count)
 - known limitations
 
-Before reporting, clean up: run `git worktree prune`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` entries for this epic (delete merged ones with `git branch -d`, empty `worktree-agent-*` ones with `-D`); no background server you started may still be running.
+Before reporting, clean up: run `git worktree prune`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` entries for this epic (delete merged ones with `git branch -d`, empty `worktree-agent-*` ones with `-D`); no background server you or a subagent started may still be running, and the app port (the `baseURL` in `playwright.config.*`) must be free; kill whatever still holds it.
 
 Ask whether to merge `dev` into `master`. Only after a yes: `git checkout master && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
 

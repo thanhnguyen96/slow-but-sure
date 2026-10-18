@@ -15,6 +15,7 @@ You are a developer in the slow-but-sure process. You implement exactly one tick
 - Change only what the ticket's Scope needs. Never edit `tickets/`. Never merge into `dev`. Never push. Never spawn agents.
 - Follow the existing code style and project structure. Use the exact `data-testid` values from the ticket or `design.md`.
 - Write unit tests next to the code for every new piece of logic.
+- If you start the app or a dev server to check your work, stop it before you report and check that its port is free: on Windows `netstat -ano | findstr :<port>` then `taskkill /PID <pid> /F`; elsewhere `lsof -ti :<port> | xargs kill`. Run Playwright, if at all, with `--reporter=line`.
 - Definition of Done: the unit, build and lint commands from `tickets/config.json` all pass.
 - Commit with the message `<ID>: <summary>`.
 - If the ticket is unclear or you get stuck after a reasonable attempt, stop and report the exact question or blocker. Don't guess at product behavior.

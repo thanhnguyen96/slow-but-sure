@@ -47,7 +47,7 @@ Agent({
      2. Small fixes: resume the same worker with SendMessage and a precise fix list. If the second attempt still fails, treat it as a reopen.
      3. Merge from the main checkout: `git merge --no-ff ticket/<ID> -m "merge <ID>: <title>"`.
      4. If the merge conflicts, run `git merge --abort` right away so `dev` stays clean. Resolve in the worker's worktree (merge `dev` into `ticket/<ID>` there and fix it), then merge again.
-     5. After merging, run the unit, build and lint commands on `dev`. If anything is red, fix it or reopen the ticket before going on.
+     5. After merging, run the unit, build and lint commands on `dev`. If anything is red, fix it or reopen the ticket before going on. If you started the app or ran e2e, stop the server and check that its port is free (`netstat -ano | findstr :<port>` then `taskkill /PID <pid> /F` on Windows, `lsof -ti :<port> | xargs kill` elsewhere).
      6. Run `board move <ID> ready-to-test --by dev-lead`, then `git worktree remove <path>`, `git branch -d ticket/<ID>`, and `git branch -D <worktree-agent-*>` (the empty branch the worktree was created on; the work is on `ticket/<ID>`).
 5. Repeat until every dev ticket of the epic is in `ready-to-test`.
 6. Report to the PM: tickets done (with level), commands run with their results, deviations from the spec, and open risks.

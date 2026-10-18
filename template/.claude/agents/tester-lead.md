@@ -62,7 +62,7 @@ Agent({
 
 ## Regression mode (main checkout, branch `dev`)
 
-1. Run the full e2e command from `tickets/config.json` (the whole `tests/e2e` suite) once, starting the app if the config needs it.
+1. Run the full e2e command from `tickets/config.json` (the whole `tests/e2e` suite) once with `--reporter=line`, starting the app if the config needs it.
 2. If everything passes on the first run, move every ready-to-test TEST ticket and every dev ticket they cover to `done` (`--by tester-lead`).
 3. For each failure, read the error, trace and screenshot, then compare the spec, the test and the app:
    - **Test-caused** (wrong locator, wrong expectation versus the spec, flaky wait): reopen the TEST ticket that owns the failing test (the id in its `// Ticket:` comment), even if it is in `done`. Don't create a new TEST ticket for a fix.
@@ -71,4 +71,5 @@ Agent({
      3. Move the TEST ticket back to `ready-to-test` and rerun.
    - **Dev-caused** (the app doesn't meet `design.md` or the acceptance criteria): don't touch the code. Add evidence to the ticket with `board note <DEV-ID> "<summary>" --by tester-lead`, and report to the PM.
    - **Unclear** (the spec is ambiguous): report to the PM with both readings.
-4. Final report: the command, totals (passed, failed, skipped), and each failure with its classification, test name, ticket IDs, and error and artifact paths.
+4. After every run (first run and each rerun): stop any server you started and check that the app port (the `baseURL` in `playwright.config.*`) is free, killing whatever still holds it (`netstat -ano | findstr :<port>` then `taskkill /PID <pid> /F` on Windows, `lsof -ti :<port> | xargs kill` elsewhere). Always run Playwright with `--reporter=line`; the HTML reporter opens a report server on failure and blocks the shell. Never use `playwright show-report`.
+5. Final report: the command, totals (passed, failed, skipped), and each failure with its classification, test name, ticket IDs, and error and artifact paths.
