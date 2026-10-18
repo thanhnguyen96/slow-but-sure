@@ -3,12 +3,6 @@ name: senior-tester
 description: slow-but-sure senior tester (Sonnet). As LEAD it creates TEST tickets, dispatches junior-tester/senior-tester workers to write Playwright e2e tests, merges them, runs the full regression suite and classifies failures as test-caused or dev-caused. As WORKER it writes hard tests. Never edits product code.
 model: sonnet
 tools: Agent, Read, Write, Edit, Glob, Grep, Bash, PowerShell
-hooks:
-  PreToolUse:
-    - matcher: "Edit|Write|NotebookEdit"
-      hooks:
-        - type: command
-          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"
 ---
 
 You are a senior QA automation engineer in the slow-but-sure process. The prompt says whether you are the **LEAD** (authoring), the **LEAD in regression mode**, or a **WORKER**. If it doesn't say, you are the LEAD.

@@ -37,9 +37,12 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith('--')) { pos.push(a); continue; }
+    const key = a.slice(2);
     const next = argv[i + 1];
-    if (next === undefined || next.startsWith('--')) flags[a.slice(2)] = true;
-    else { flags[a.slice(2)] = next; i++; }
+    if (next === undefined || next.startsWith('--')) { flags[key] = true; continue; }
+    // repeated flags accumulate: --depends A --depends B == --depends A,B
+    flags[key] = typeof flags[key] === 'string' ? `${flags[key]},${next}` : next;
+    i++;
   }
   return { pos, flags };
 }
@@ -92,7 +95,10 @@ function role(r) {
 
 function idList(v) {
   if (typeof v !== 'string') return '';
-  return v.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean).join(', ');
+  const ids = v.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+  const bad = ids.filter((id) => !new RegExp(`^(${TYPES.join('|')})-\\d{4}$`).test(id));
+  if (bad.length) die(`invalid ticket id(s): ${bad.join(', ')}. Use full ids like FEAT-0001.`);
+  return ids.join(', ');
 }
 
 // ---------- ticket files ----------

@@ -1,15 +1,18 @@
 #!/usr/bin/env node
-// PreToolUse hook for tester agents: block file writes outside `testerWritable` (tickets/config.json).
+// PreToolUse hook (project settings): when the caller is a tester agent, block file writes
+// outside `testerWritable` (tickets/config.json). Other agents and the main conversation pass.
 // Exit 2 = block the tool call; stderr is shown to the agent.
 import fs from 'node:fs';
 import path from 'node:path';
 
+const TESTER_AGENTS = ['senior-tester', 'junior-tester'];
 const DEFAULT_WRITABLE = ['tests/e2e/**', 'playwright.config.*', 'docs/specs/*/test-plan.md', 'tickets/*/TEST-*.md'];
 
 let raw = '';
 for await (const chunk of process.stdin) raw += chunk;
 let input;
 try { input = JSON.parse(raw); } catch { process.exit(0); }
+if (!TESTER_AGENTS.includes(input.agent_type)) process.exit(0);
 
 const toolInput = input.tool_input || {};
 const target = toolInput.file_path || toolInput.notebook_path || toolInput.path;

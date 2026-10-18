@@ -11,6 +11,9 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE = path.join(HERE, 'template');
 const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"';
+// Tester guard lives in project settings (not agent frontmatter): frontmatter hooks need the
+// workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
+const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"';
 const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/worktrees/', 'test-results/', 'playwright-report/'];
 
 const GRILL_REPO = 'mattpocock/skills';
@@ -59,12 +62,19 @@ function mergeSettings() {
     }
   }
   settings.hooks ??= {};
-  settings.hooks.UserPromptSubmit ??= [];
-  const present = settings.hooks.UserPromptSubmit.some((g) => (g.hooks || []).some((h) => h.command === REMINDER_CMD));
-  if (present) return console.log('  hook already in .claude/settings.json');
-  settings.hooks.UserPromptSubmit.push({ hooks: [{ type: 'command', command: REMINDER_CMD }] });
-  fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
-  console.log('  added UserPromptSubmit hook to .claude/settings.json');
+  let changed = false;
+  for (const [event, matcher, command] of [
+    ['UserPromptSubmit', undefined, REMINDER_CMD],
+    ['PreToolUse', 'Edit|Write|NotebookEdit', GUARD_CMD],
+  ]) {
+    settings.hooks[event] ??= [];
+    if (settings.hooks[event].some((g) => (g.hooks || []).some((h) => h.command === command))) continue;
+    settings.hooks[event].push({ ...(matcher && { matcher }), hooks: [{ type: 'command', command }] });
+    console.log(`  added ${event} hook to .claude/settings.json`);
+    changed = true;
+  }
+  if (changed) fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
+  else console.log('  hooks already in .claude/settings.json');
 }
 
 function mergeGitignore() {

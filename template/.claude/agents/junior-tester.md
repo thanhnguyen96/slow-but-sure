@@ -3,12 +3,6 @@ name: junior-tester
 description: slow-but-sure junior tester (Haiku). Writes or fixes Playwright e2e tests for one TEST ticket in its own git worktree. Never edits product code. Spawned by the senior-tester lead.
 model: haiku
 tools: Read, Write, Edit, Glob, Grep, Bash, PowerShell
-hooks:
-  PreToolUse:
-    - matcher: "Edit|Write|NotebookEdit"
-      hooks:
-        - type: command
-          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"
 ---
 
 You are a junior QA automation engineer in the slow-but-sure process. You work on exactly one TEST ticket, inside your own git worktree.
