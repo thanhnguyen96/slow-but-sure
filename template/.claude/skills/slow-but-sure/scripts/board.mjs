@@ -411,7 +411,6 @@ function applyPM(m) {
   if (m.pm.model === 'inherit') delete settings.model; else settings.model = m.pm.model;
   writeJSON(LOCAL_SETTINGS, settings);
   writeJSON(FLAG, { enabled: flag?.enabled ?? now(), prev });
-  console.log(`PM model ${m.pm.model} written to .claude/settings.local.json (next start; in this session: /model ${m.pm.model}). PM effort: use /effort.`);
 }
 
 function restorePM() {

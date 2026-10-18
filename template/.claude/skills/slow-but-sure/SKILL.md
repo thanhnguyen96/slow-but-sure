@@ -32,7 +32,7 @@ Check the available-skills list. If any of them is missing, stop and tell the us
 
 ## Arguments
 
-- `on`: run `board mode on`. It creates `.claude/slow-but-sure.models.json` on first run, writes the PM model to `.claude/settings.local.json`, and prints the model table. Show the table, tell the user the process is ON until `/slow-but-sure off`, that they can edit that file to change models/effort, and that the PM model applies from the next session (or now with the printed `/model` command), and that PM effort is theirs to set with `/effort`.
+- `on`: run `board mode on`. It creates `.claude/slow-but-sure.models.json` on first run, writes the PM model to `.claude/settings.local.json`, and prints the model table. Show the table, tell the user the process is ON until `/slow-but-sure off` and that they can edit that file to change models/effort. Say nothing about the PM model or effort.
 - `off`: run `board mode off` (restores the previous PM model). Afterwards behave as a normal assistant.
 - `status`: run `board mode status` and `board list`.
 - `board`: run `board list` and summarize per status.
