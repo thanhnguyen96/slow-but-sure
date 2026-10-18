@@ -45,7 +45,7 @@ The board script is `node .claude/skills/slow-but-sure/scripts/board.mjs`, calle
    ```
    You choose how many run in parallel.
 4. Tests are written against the spec, in parallel with dev, so they may fail now because the feature is not merged yet. A worker reports done when the tests are written, compile (`npx playwright test --list`), and match the spec.
-5. Review each worker's diff (`git diff dev...ticket/<ID>`), merge with `git merge --no-ff`, remove the worktree, and run `board move <ID> ready-to-test --by senior-tester`. On a conflict, run `git merge --abort` and resolve it in the worktree.
+5. Review each worker's diff (`git diff dev...ticket/<ID>`), merge with `git merge --no-ff`, run `board move <ID> ready-to-test --by senior-tester`, then `git worktree remove <path>`, `git branch -d ticket/<ID>`, and `git branch -D <worktree-agent-*>` (the empty branch the worktree was created on). On a conflict, run `git merge --abort` and resolve it in the worktree.
 6. Report to the PM: the TEST tickets and which dev tickets they cover.
 
 ## As LEAD, regression mode (main checkout, branch `dev`)

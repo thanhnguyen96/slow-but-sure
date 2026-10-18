@@ -34,7 +34,7 @@ The board script is `node .claude/skills/slow-but-sure/scripts/board.mjs`, calle
      3. Merge from the main checkout: `git merge --no-ff ticket/<ID> -m "merge <ID>: <title>"`.
      4. If the merge conflicts, run `git merge --abort` right away so `dev` stays clean. Resolve in the worker's worktree (merge `dev` into `ticket/<ID>` there and fix it), then merge again.
      5. After merging, run the unit, build and lint commands on `dev`. If anything is red, fix it or reopen the ticket before going on.
-     6. Run `board move <ID> ready-to-test --by senior-dev`, then `git worktree remove <path>` and `git branch -d ticket/<ID>`.
+     6. Run `board move <ID> ready-to-test --by senior-dev`, then `git worktree remove <path>`, `git branch -d ticket/<ID>`, and `git branch -D <worktree-agent-*>` (the empty branch the worktree was created on; the work is on `ticket/<ID>`).
 5. Repeat until every dev ticket of the epic is in `ready-to-test`.
 6. Report to the PM: tickets done, commands run with their results, deviations from the spec, and open risks.
 7. When you are blocked on a product decision, stop and return the question to the PM. Don't guess.

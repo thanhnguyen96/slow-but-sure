@@ -96,7 +96,7 @@ Create the epic folder `docs/specs/<YYYYMMDD>-<slug>/` and write `brief.md` with
 1. Write an idea plan (layout, flows, states) in `design.md`.
 2. Build mockups with the opendesign skills (`opendesign:opendesign`, `opendesign:wireframe` for exploring options, then a polished mock). Put every interactive or asserted element's real `data-testid` in the mock.
 3. Iterate with the user until they are satisfied.
-4. Copy or link the final mockups into `docs/specs/<epic>/mockups/`.
+4. Copy the final mockups into `docs/specs/<epic>/mockups/` (the `opendesign/` workspace is gitignored). Stop any preview server you started before leaving this step.
 
 `design.md` must list every page:
 
@@ -153,6 +153,8 @@ Loop until the full suite passes.
 - tests added
 - the suite result (command and pass count)
 - known limitations
+
+Before reporting, clean up: run `git worktree prune`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` entries for this epic (delete merged ones with `git branch -d`, empty `worktree-agent-*` ones with `-D`); no background server you started may still be running.
 
 Ask whether to merge `dev` into `master`. Only after a yes: `git checkout master && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
 

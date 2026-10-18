@@ -14,7 +14,7 @@ const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"'
 // Tester guard lives in project settings (not agent frontmatter): frontmatter hooks need the
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
 const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"';
-const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/worktrees/', 'test-results/', 'playwright-report/'];
+const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
 
 const GRILL_REPO = 'mattpocock/skills';
 const GRILL_SHA = '49dd158d1076134a641b33efb035946536778336';
