@@ -3,9 +3,9 @@
 Claude Code skill: ticket-driven software process.
 
 - **PM**: main conversation (grills the user, designs, coordinates).
-- **dev-lead / tester-lead**: leads (default Sonnet/high); plan, create tickets, dispatch workers, review, merge.
+- **dev-lead / tester-lead**: leads (default Sonnet/xhigh); plan, create tickets, dispatch workers, review, merge.
 - **dev / tester**: workers, one ticket each, in their own git worktree. Level per ticket: junior (Haiku/max) by default; each reopen raises it one step to middle (Sonnet/xhigh), then senior (Opus/medium, cap). A reopen requires a context summary.
-- **Models**: `.claude/slow-but-sure.models.json` (created on first `/slow-but-sure on`) sets model + effort for PM, leads and the three levels. `/slow-but-sure models` shows the table. The PM's values are written to `.claude/settings.local.json` while ON and restored on OFF.
+- **Models**: `.claude/slow-but-sure.models.json` (created on first `/slow-but-sure on`) sets model + effort for the leads and the three levels, and the PM model. `/slow-but-sure models` shows the table. The PM model is written to `.claude/settings.local.json` while ON and restored on OFF; PM effort is yours to set with `/effort`.
 - **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`.
 - **Tests**: unit tests by dev; Playwright e2e in `tests/e2e/` by testers (`getByTestId`, ticket comment per test). Testers are hook-blocked from editing product code.
 - **Git**: `ticket/<ID>` → `dev` (integration) → `master` (after regression + user approval).

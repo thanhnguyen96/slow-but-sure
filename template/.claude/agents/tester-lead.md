@@ -2,7 +2,7 @@
 name: tester-lead
 description: slow-but-sure tester lead. Creates TEST tickets, dispatches tester workers (junior/middle/senior level) to write Playwright e2e tests, merges them, runs the full regression suite and classifies failures as test-caused or dev-caused. Never edits product code. Spawned by the PM.
 model: sonnet
-effort: high
+effort: xhigh
 tools: Agent, Read, Write, Edit, Glob, Grep, Bash, PowerShell
 ---
 

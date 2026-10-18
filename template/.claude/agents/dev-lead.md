@@ -2,7 +2,7 @@
 name: dev-lead
 description: slow-but-sure dev lead. Writes the detailed plan, creates dev tickets, dispatches dev workers (junior/middle/senior level) in worktrees, reviews, merges into dev and resolves conflicts. Spawned by the PM.
 model: sonnet
-effort: high
+effort: xhigh
 tools: Agent, Read, Write, Edit, Glob, Grep, Bash, PowerShell
 ---
 

@@ -21,9 +21,9 @@ const DEFAULT_CONFIG = {
 };
 // Model + effort per role and per worker level. Users edit .claude/slow-but-sure.models.json.
 const DEFAULT_MODELS = {
-  pm: { model: 'opus', effort: 'high' },
-  'dev-lead': { model: 'sonnet', effort: 'high' },
-  'tester-lead': { model: 'sonnet', effort: 'high' },
+  pm: { model: 'opus' }, // effort: set it yourself in the terminal with /effort
+  'dev-lead': { model: 'sonnet', effort: 'xhigh' },
+  'tester-lead': { model: 'sonnet', effort: 'xhigh' },
   levels: {
     junior: { model: 'haiku', effort: 'max' },
     middle: { model: 'sonnet', effort: 'xhigh' },
@@ -382,8 +382,7 @@ function loadModels() {
     // PM goes to settings (any model id); subagents go through the Agent tool (aliases only).
     const okModel = name === 'pm' ? typeof v.model === 'string' && v.model : AGENT_MODELS.includes(v.model);
     if (!okModel) die(`${name}.model '${v.model}' invalid in ${MODELS_FILE}. Use one of ${AGENT_MODELS.join(', ')}`);
-    if (!EFFORTS.includes(v.effort)) die(`${name}.effort '${v.effort}' invalid. Use one of ${EFFORTS.join(', ')}`);
-    if (name === 'pm' && v.effort === 'max') die(`pm.effort cannot be 'max' (settings only accept up to xhigh; use /effort max in-session instead)`);
+    if (name !== 'pm' && !EFFORTS.includes(v.effort)) die(`${name}.effort '${v.effort}' invalid. Use one of ${EFFORTS.join(', ')}`);
   }
   return m;
 }
@@ -394,34 +393,33 @@ function printModels(m) {
   for (const [name, get, use] of MODEL_ROWS) {
     const v = get(m);
     const model = `${v.model}${MODEL_NOTES[v.model] ? ` (${MODEL_NOTES[v.model]})` : ''}`;
-    const effort = `${v.effort} (${EFFORT_NOTES[v.effort]})`;
+    const effort = name === 'pm' ? '(yours, via /effort)' : `${v.effort} (${EFFORT_NOTES[v.effort]})`;
     console.log(`  ${name.padEnd(12)} ${model.padEnd(26)} ${effort.padEnd(26)} ${use}`);
   }
   console.log('  Workers start at junior; each reopen of a ticket raises it one level, up to senior.');
 }
 
-// PM = the main conversation, so its model/effort live in .claude/settings.local.json while ON.
-// The values that were there before are kept in the flag file and restored on `mode off`.
+// PM = the main conversation, so its model lives in .claude/settings.local.json while ON (effort is the user's own /effort).
+// The value that was there before is kept in the flag file and restored on `mode off`.
 function applyPM(m) {
   const flag = readJSON(FLAG, null);
   const settings = readJSON(LOCAL_SETTINGS, {});
-  const prev = flag?.prev ?? { model: settings.model ?? null, effortLevel: settings.effortLevel ?? null };
+  const prev = flag?.prev ?? { model: settings.model ?? null };
   if (m.pm.model === 'inherit') delete settings.model; else settings.model = m.pm.model;
-  settings.effortLevel = m.pm.effort;
   writeJSON(LOCAL_SETTINGS, settings);
   writeJSON(FLAG, { enabled: flag?.enabled ?? now(), prev });
-  console.log(`PM: ${m.pm.model}/${m.pm.effort} written to .claude/settings.local.json (next start; in this session: /model ${m.pm.model}, /effort ${m.pm.effort})`);
+  console.log(`PM model ${m.pm.model} written to .claude/settings.local.json (next start; in this session: /model ${m.pm.model}). PM effort: use /effort.`);
 }
 
 function restorePM() {
   const flag = readJSON(FLAG, null);
   if (!flag?.prev) return;
   const settings = readJSON(LOCAL_SETTINGS, {});
-  for (const k of ['model', 'effortLevel']) {
+  for (const k of Object.keys(flag.prev)) {
     if (flag.prev[k] === null) delete settings[k]; else settings[k] = flag.prev[k];
   }
   writeJSON(LOCAL_SETTINGS, settings);
-  console.log('PM model/effort restored in .claude/settings.local.json');
+  console.log('PM model restored in .claude/settings.local.json');
 }
 
 function cmdModels(flags) {
