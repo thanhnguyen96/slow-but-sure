@@ -37,10 +37,10 @@ If any is missing from the available-skills list, stop and tell the user to run 
 |---|---|---|---|---|
 | PM | main conversation (you) | user's own `/model`, `/effort` | `brief.md`, `design.md`, `plan.md`, mockups; small no-ticket fixes | creates BUG; `sbs mv` overrides; `dev` → release branch after Gate 3 |
 | lead-dev | `lead-dev` | sonnet / xhigh | `dev-plan.md`, dev tickets. Never tests, never runs e2e | `new`, `start`, `approve`, `reject`, `reopen` for dev tickets |
-| dev | `dev` (worker) | by level | product code + unit tests in its worktree | `sbs merge` its own ticket |
+| dev | `dev` (worker) | by level | product code + unit tests in its worktree | `sbs merge` its own ticket; `sbs e2e`, `sbs app` |
 | reviewer | `reviewer` | opus / medium | nothing (read-only) | none; answers APPROVE / CHANGES to lead-dev |
-| lead-qa | `lead-qa` | sonnet / xhigh | `qa-plan.md`, TEST tickets. Never product code | `new`, `start`, `approve`, `reject`, `reopen` for TEST tickets; `done` after regression |
-| qa | `qa` (worker) | by level | `tests/e2e/**` in its worktree | `sbs merge` its own ticket |
+| lead-qa | `lead-qa` | sonnet / xhigh | `qa-plan.md`, TEST tickets. Never product code | `new`, `start`, `approve`, `reject`, `reopen` for TEST tickets; `done` after regression; `sbs e2e`, `sbs app` |
+| qa | `qa` (worker) | by level | `tests/e2e/**` in its worktree | `sbs merge` its own ticket; `sbs e2e`, `sbs app` |
 
 Worker levels (defaults; real values via `sbs models`):
 
@@ -50,7 +50,7 @@ Worker levels (defaults; real values via `sbs models`):
 | middle | sonnet / xhigh | reopened once |
 | senior | opus / medium | reopened twice or more (cap) |
 
-`.claude/hooks/sbs-guard.mjs` limits every subagent (never you): no push, `reset --hard`, `--no-verify` or checkout of the release branch; each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` are yours); dev may not write `devBlocked` (tickets, epic docs, conventions); lead-qa and qa only `qaWritable`; lead-dev no tests (`leadDevBlocked`) and no Playwright; the reviewer runs read-only commands only. Lists are in `tickets/config.json`. If a lead is stuck on the other side's work, it reports to you and you coordinate.
+`.claude/hooks/sbs-guard.mjs` limits every subagent (never you): no push, `reset --hard`, `--no-verify` or checkout of the release branch; each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` are yours); dev may not write `devBlocked` (tickets, epic docs, conventions); lead-qa and qa only `qaWritable`; lead-dev no tests (`leadDevBlocked`) and no Playwright; the reviewer runs read-only commands only; the app and Playwright tests start only through `sbs app` / `sbs e2e`, and no `sbs` command runs in the background. Lists are in `tickets/config.json`. If a lead is stuck on the other side's work, it reports to you and you coordinate.
 
 When you spawn a lead, pass `model` and `effort` from `sbs models --json` (`lead-dev`, `lead-qa`).
 
@@ -101,7 +101,7 @@ Create tickets only for a new feature (`FEAT`), a bug fix (`BUG`), a large refac
 
 1. `tickets/config.json` missing: `sbs init`.
 2. Branch `dev` missing: `git branch dev <release>`. Switch the main checkout to `dev`.
-3. Fill `tickets/config.json` `commands` (setup, unit, build, lint, e2e, app) by inspecting the project. `setup` installs dependencies in a fresh worktree (`npm ci`, `pnpm install --frozen-lockfile`, ...); workers run it first, because a new worktree has no `node_modules`. `mergeChecks` lists which commands `sbs merge` runs; a check with an empty command is skipped with a warning, so leave none empty that the project has. Ask the user only about real choices. For a web project without Playwright, the INIT or first FEAT epic sets it up.
+3. Fill `tickets/config.json` `commands` (setup, unit, build, lint, e2e, app) by inspecting the project. `app` starts the app; `sbs app` and `sbs e2e` run it in the background and stop it. Set `port` when `playwright.config.*` has no `baseURL` with a port. `setup` installs dependencies in a fresh worktree (`npm ci`, `pnpm install --frozen-lockfile`, ...); workers run it first, because a new worktree has no `node_modules`. `mergeChecks` lists which commands `sbs merge` runs; a check with an empty command is skipped with a warning, so leave none empty that the project has. Ask the user only about real choices. For a web project without Playwright, the INIT or first FEAT epic sets it up.
 4. `docs/conventions.md` missing: create it from `.claude/skills/slow-but-sure/templates/conventions.md`, filling every `<...>` from the real codebase (or the stack in the brief for a new project). Commit it on `dev`. Update it when an epic adds a rule.
 
 ## Step 2: clarify (grilling)
@@ -173,9 +173,9 @@ Loop until the full suite passes.
 
 1. **Trace.** Write `docs/epics/<epic>/trace.md`: one row per acceptance criterion in `brief.md` with the tickets that implement it, the e2e or unit tests that prove it (`grep -rn "// Ticket:" tests/e2e` and the AC → test tables in `reviews.md`), and the regression result. A row with no test or a failing test blocks delivery: route it like a regression failure (a TEST ticket to lead-qa, or a BUG to lead-dev).
 2. **Compare with the mockups.** Put each screenshot next to its mockup. Layout, labels, states or elements that differ from the approved mockup are BUG tickets for lead-dev, unless `brief.md` or `design.md` records the change. Loop through Steps 5 and 6 for them.
-3. **Gate 3, visual like the mockup review.** Start the app (`commands.app`). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Then AskUserQuestion with "Approve" and "Adjust". "Adjust" becomes tickets (Step 0 triage) and the loop runs again. Stop the app afterwards.
+3. **Gate 3, visual like the mockup review.** `sbs app start` (prints the URL). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Then AskUserQuestion with "Approve" and "Adjust". "Adjust" becomes tickets (Step 0 triage) and the loop runs again. `sbs app stop` afterwards.
 
-Before Gate 3, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; no server you or a subagent started may still run, and the app port (the `baseURL` in `playwright.config.*`) must be free.
+Before Gate 3, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; `sbs app status` must say not running (`sbs app stop` frees the port).
 
 After "Approve", ask whether to merge `dev` into `<release>`. Only after a yes: `git checkout <release> && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
 

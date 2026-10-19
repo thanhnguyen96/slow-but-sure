@@ -11,6 +11,8 @@
 //   every role:   no git push, reset --hard, branch -D, --no-verify, checkout of the release branch.
 //   sbs:           each role only runs its own sbs commands (init, mv, mode, epic new are the PM's).
 //   lead-dev:     no Playwright / e2e command.
+//   workers, leads: no app server or Playwright test run outside `sbs app` / `sbs e2e` (they start, wait and stop it);
+//                 `sbs` never in the background (it returns on its own; a background run invites polling).
 //   reviewer:     read-only command allowlist.
 // A best-effort check against mistakes, not a sandbox. Exit 2 = block; stderr is shown to the agent.
 import fs from 'node:fs';
@@ -23,11 +25,11 @@ const DEFAULTS = {
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
 };
 const SBS_ALLOWED = {
-  dev: ['merge', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
-  qa: ['merge', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
+  dev: ['merge', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
+  qa: ['merge', 'e2e', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
   reviewer: ['show', 'ls', 'list', 'epic', 'models', 'help', ''],
-  'lead-dev': ['new', 'start', 'approve', 'reject', 'reopen', 'note', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
-  'lead-qa': ['new', 'start', 'approve', 'reject', 'reopen', 'done', 'note', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
+  'lead-dev': ['new', 'start', 'approve', 'reject', 'reopen', 'note', 'app', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
+  'lead-qa': ['new', 'start', 'approve', 'reject', 'reopen', 'done', 'note', 'e2e', 'app', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
 };
 const REVIEWER_CMDS = ['cd', 'pwd', 'ls', 'cat', 'head', 'tail', 'wc', 'grep', 'rg', 'find', 'diff', 'echo', 'printf',
   'sort', 'uniq', 'cut', 'tr', 'awk', 'sed', 'git', 'node', 'npm', 'npx', 'true', 'test', '['];
@@ -198,6 +200,19 @@ for (let words of parse(String(toolInput.command || ''))) {
     const swSub = rest[swAt + 1] && !rest[swAt + 1].startsWith('-') ? rest[swAt + 1] : '';
     if (!SBS_ALLOWED[agent].includes(swSub)) block(`may not run \`sbs ${swSub}\`. Allowed for ${agent}: ${SBS_ALLOWED[agent].filter(Boolean).join(', ')}. Ask your lead or the PM.`);
     if (swSub === 'epic' && rest[swAt + 2] === 'new') block('may not create epics; the PM does.');
+    if (toolInput.run_in_background) block(`may not run \`sbs ${swSub}\` in the background. Run it in the foreground: it returns on its own (sbs e2e stops within 10 minutes).`);
+  }
+
+  // servers and Playwright test runs go through sbs app / sbs e2e
+  if (agent !== 'reviewer') {
+    const appCmd = commands.app && line.includes(commands.app);
+    const npmServe = (base === 'npm' || base === 'pnpm' || base === 'yarn') && /^(start|(run )?(start|dev|serve|preview))\b/.test(rest.join(' '));
+    const devServer = ['vite', 'next', 'nodemon', 'http-server', 'serve', 'live-server'].includes(base);
+    const script = base === 'node' && rest.find((w) => !w.startsWith('-'));
+    const nodeServer = script && /(^|[\\/])(server|app|main)\.[cm]?[jt]s$/i.test(script) && repoRel(path.resolve(cwd, fromBash(script))) !== null;
+    if (appCmd || npmServe || devServer || nodeServer) block('may not start the app directly (it blocks the shell or is left running). Use `sbs app start` (background, recorded pid) and `sbs app stop`; for tests, `sbs e2e` starts and stops it itself.');
+    const pwTest = /\bplaywright\b/.test(line) && /\btest\b/.test(line) || commands.e2e && line.includes(commands.e2e);
+    if (pwTest && agent !== 'lead-dev') block('may not run Playwright tests directly. Use `sbs e2e` (whole suite) or `sbs e2e <spec file> -g "name"` (a subset); it starts the app if needed, runs the tests and always stops the app.');
   }
 
   // e2e belongs to lead-qa and qa

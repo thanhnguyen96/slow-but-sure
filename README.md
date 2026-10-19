@@ -11,7 +11,7 @@ Claude Code skill (`/slow-but-sure`, alias `/sbs`): ticket-driven software proce
 - **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sbs`.
 - **Conventions**: `docs/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
 - **/sbs-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
-- **Role limits** (`hooks/sbs-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands). Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
+- **Role limits** (`hooks/sbs-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands); the app and Playwright tests start only via `sbs app` / `sbs e2e` (background app with a recorded pid, always stopped), and `sbs` never runs in the background. Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
 - **Git**: `ticket/<ID>` → `dev` (integration, via `sbs merge`) → release branch (`releaseBranch`: `master`, or `main` if only that exists; after regression and user approval).
 
 ## Install
@@ -48,6 +48,8 @@ sbs approve FEAT-0001                          # -> ready-to-test, removes workt
 sbs reject FEAT-0001 "store.js:35 not trimmed" # -> in-progress, a new worker fixes the branch, merges again
 sbs reopen FEAT-0001 "AC2 failed: ..."         # -> in-progress, level +1
 sbs done FEAT-0001 TEST-0001                   # after regression
+sbs e2e [spec -g "name"]                       # setup app, run e2e (--reporter=line), always teardown
+sbs app start|stop|status                      # app in the background (debug, screenshots, Gate 3)
 sbs ls [status] [-e epic]   sbs show FEAT-0001   sbs epic   sbs clean   sbs models
 ```
 
@@ -62,7 +64,7 @@ template/.claude/
   skills/slow-but-sure/scripts/sbs.mjs           sbs CLI entry: help, arg parsing, command table
   skills/slow-but-sure/scripts/lib/             constants, util, repo (git, lock, commits), tickets (files, epic logs)
   skills/slow-but-sure/scripts/commands/        board (init/new/start/note/mv/ls/show/clean), merge,
-                                                  review (approve/reject/reopen/done), epic, setup (models/mode)
+                                                  review (approve/reject/reopen/done), epic, setup (models/mode), app (app, e2e)
   skills/slow-but-sure/scripts/context.mjs      used by /sbs-context
   skills/slow-but-sure/templates/conventions.md starting point for docs/conventions.md
   skills/slow-but-sure/templates/tickets-README.md   copied to tickets/README.md by sbs init

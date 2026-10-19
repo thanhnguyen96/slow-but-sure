@@ -60,8 +60,8 @@ export function config() {
   return { ...DEFAULT_CONFIG, ...c, commands: { ...DEFAULT_CONFIG.commands, ...(c.commands || {}) } };
 }
 
-let lockHeld = null;
-process.on('exit', () => { if (lockHeld) fs.rmSync(lockHeld, { force: true }); });
+const locksHeld = new Set();
+process.on('exit', () => { for (const f of locksHeld) fs.rmSync(f, { force: true }); });
 
 // A lock left by a killed process (its pid is gone) is stale right away.
 function holderAlive(file) {
@@ -71,24 +71,24 @@ function holderAlive(file) {
   try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
 }
 
-// One writer at a time across the main checkout and every worktree.
-export function lock() {
+// One writer at a time across the main checkout and every worktree (`name` sbs: the board; e2e: one suite run at a time).
+export function lock(name = 'sbs', what = 'board') {
   if (!IN_GIT) return;
-  const file = path.resolve(MAIN, git(['rev-parse', '--git-common-dir']), 'sbs.lock');
+  const file = path.resolve(MAIN, git(['rev-parse', '--git-common-dir']), `${name}.lock`);
   const start = Date.now();
   let told = false;
   for (;;) {
     try {
       fs.writeFileSync(file, `${process.pid} ${new Date().toISOString()} ${process.argv.slice(2).join(' ')}\n`, { flag: 'wx' });
-      lockHeld = file;
+      locksHeld.add(file);
       return;
     } catch (e) {
       if (e.code !== 'EEXIST') throw e;
       let age = 0;
       try { age = Date.now() - fs.statSync(file).mtimeMs; } catch { continue; }
       if (age > LOCK_STALE_MS || !holderAlive(file)) { fs.rmSync(file, { force: true }); continue; }
-      if (Date.now() - start > LOCK_WAIT_MS) die(`board is locked by: ${fs.readFileSync(file, 'utf8').trim()} (${file})`);
-      if (!told) { console.log(`waiting for board lock (${fs.readFileSync(file, 'utf8').trim()})`); told = true; }
+      if (Date.now() - start > LOCK_WAIT_MS) die(`${what} is locked by: ${fs.readFileSync(file, 'utf8').trim()} (${file})`);
+      if (!told) { console.log(`waiting for ${what} lock (${fs.readFileSync(file, 'utf8').trim()})`); told = true; }
       sleep(1000);
     }
   }
@@ -110,11 +110,11 @@ export function guardMain(flags, { clean = false } = {}) {
     // A lead may be between an edit and its commit: wait a little before giving up.
     let dirty = dirtyFiles();
     for (let i = 0; dirty && i < DIRTY_WAIT_S / 5; i++) {
-      if (!i) console.log('main checkout has uncommitted changes; waiting for the lead to commit them');
+      if (!i) console.log(`main checkout has uncommitted changes; waiting up to ${DIRTY_WAIT_S}s for the lead to commit them:\n${dirty}`);
       sleep(5000);
       dirty = dirtyFiles();
     }
-    if (dirty) die(`the main checkout has uncommitted changes; the lead must commit or stash them first:\n${dirty}`);
+    if (dirty) die(`the main checkout still has uncommitted changes:\n${dirty}\nThey are not yours: don't commit, stash or revert them. Report this list to your lead (a lead reports it to the PM).`);
   }
 }
 

@@ -26,8 +26,7 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 - Then run `commands.setup` from `tickets/config.json` in your worktree (a new worktree has no installed dependencies). If it is empty and the project has dependencies, report that to your lead.
 - Only write inside `tests/e2e/` (and `playwright.config.*` if the ticket says so). Never modify product code: a hook blocks it; don't work around it with shell commands. Never edit `tickets/` or `docs/`. Never push. Never spawn agents.
 - If the app seems wrong, don't fix it. Report it.
-- Run Playwright with `--reporter=line`. After every e2e run, stop any server you started and check the app port (the `baseURL` in `playwright.config.*`) is free: Windows `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`. Never leave `npm start` or a preview running.
-- Start a long-running server (`commands.app`, `node src/server.js`) only with `run_in_background: true`; in the foreground the call blocks until its 2-minute timeout. Playwright with a `webServer` in its config starts the app itself.
+- Run your tests with `sbs e2e <your spec file>` (add `-g "<name>"` for one test). It starts the app if needed, always stops it, and frees the port. For debugging, `sbs app start` / `sbs app stop`. A hook blocks starting the app or Playwright tests any other way, and running `sbs` in the background.
 
 ## Test style
 

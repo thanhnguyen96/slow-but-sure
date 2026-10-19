@@ -27,8 +27,7 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 - Change only what the Scope needs. Keep the Contracts exactly as written. Never edit `tickets/`, `docs/epics/` or `docs/conventions.md`. Never push. Never spawn agents. A hook enforces these and limits your `sbs` commands to `merge`, `show`, `ls`.
 - Write unit tests for every new piece of logic. A test must fail if the code were wrong (assert values, not just that something exists). Never weaken an existing test to make your change pass; if one seems wrong, report it.
 - Use the exact `data-testid` values from the ticket or `design.md`.
-- If you start the app or a dev server, stop it before you report and check its port is free (Windows: `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`).
-- Start a long-running server (`commands.app`, `node src/server.js`) only with `run_in_background: true`; in the foreground the call blocks until its 2-minute timeout. Playwright with a `webServer` in its config starts the app itself.
+- To try the app, `sbs app start` (background, prints the URL) and `sbs app stop` before you report. A hook blocks starting it any other way, and running `sbs` in the background.
 - If the ticket is unclear or you are stuck after a reasonable attempt, stop and report the question. Don't guess at product behavior.
 
 ## Done: merge it yourself

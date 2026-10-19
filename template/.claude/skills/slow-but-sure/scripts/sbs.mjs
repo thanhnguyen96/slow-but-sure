@@ -11,12 +11,14 @@
 // commands/review.mjs approve, reject, reopen, done
 // commands/epic.mjs   epic new | ls
 // commands/setup.mjs  models, mode
+// commands/app.mjs    app start|stop|status, e2e (setup/teardown around the suite)
 import { STATUSES, ROLES, LEVELS } from './lib/constants.mjs';
 import { cmdInit, cmdNew, cmdStart, cmdNote, cmdMv, cmdLs, cmdShow, cmdClean } from './commands/board.mjs';
 import { cmdMerge } from './commands/merge.mjs';
 import { cmdApprove, cmdReject, cmdReopen, cmdDone } from './commands/review.mjs';
 import { cmdEpic } from './commands/epic.mjs';
 import { cmdModels, cmdMode } from './commands/setup.mjs';
+import { cmdApp, cmdE2e } from './commands/app.mjs';
 
 const SHORT_FLAGS = { e: 'epic', t: 'type', n: 'note', b: 'by', l: 'level', d: 'depends', c: 'covers' };
 
@@ -36,6 +38,10 @@ Tickets
   sbs ls [status] [-e epic] [-t type]
   sbs show <ID>
   sbs clean                            remove worktrees/branches of approved tickets
+
+App and e2e (never start the app or Playwright yourself)
+  sbs e2e [spec file | -g "name" ...]  full suite or a subset: starts the app if needed, runs it, always stops it
+  sbs app start|stop|status            app in the background for debugging, screenshots, the user's check
 
 Epics
   sbs epic new <slug>                  create docs/epics/<YYYYMMDD>-<slug>/
@@ -69,7 +75,7 @@ function parseArgs(argv) {
 const COMMANDS = {
   init: cmdInit, new: cmdNew, start: cmdStart, merge: cmdMerge, approve: cmdApprove, reject: cmdReject,
   reopen: cmdReopen, done: cmdDone, note: cmdNote, mv: cmdMv, ls: cmdLs, list: cmdLs, show: cmdShow,
-  clean: cmdClean, epic: cmdEpic, models: cmdModels, mode: cmdMode,
+  clean: cmdClean, epic: cmdEpic, app: cmdApp, e2e: cmdE2e, models: cmdModels, mode: cmdMode,
 };
 
 const { pos, flags } = parseArgs(process.argv.slice(2));
@@ -78,4 +84,4 @@ if (!COMMANDS[cmd]) {
   console.log(USAGE);
   process.exit(cmd && cmd !== 'help' ? 1 : 0);
 }
-COMMANDS[cmd](pos, flags);
+await COMMANDS[cmd](pos, flags);
