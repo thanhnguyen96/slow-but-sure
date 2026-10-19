@@ -23,7 +23,8 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 ## Rules
 
 - First run the branch command from your prompt. Work and commit only on `ticket/<ID>`.
-- Change only what the Scope needs. Keep the Contracts exactly as written. Never edit `tickets/` or `docs/`. Never push. Never spawn agents. A hook enforces these and limits your `sw` commands to `merge`, `show`, `ls`.
+- Then run `commands.setup` from `tickets/config.json` in your worktree (a new worktree has no installed dependencies). If it is empty and the project has dependencies, report that to your lead.
+- Change only what the Scope needs. Keep the Contracts exactly as written. Never edit `tickets/`, `docs/epics/` or `docs/conventions.md`. Never push. Never spawn agents. A hook enforces these and limits your `sw` commands to `merge`, `show`, `ls`.
 - Write unit tests for every new piece of logic. A test must fail if the code were wrong (assert values, not just that something exists). Never weaken an existing test to make your change pass; if one seems wrong, report it.
 - Use the exact `data-testid` values from the ticket or `design.md`.
 - If you start the app or a dev server, stop it before you report and check its port is free (Windows: `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`).

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { STATUSES, TYPES, DEFAULT_CONFIG } from '../lib/constants.mjs';
 import { die, now, slugify, readJSON, writeJSON } from '../lib/util.mjs';
-import { TICKETS, EPICS, COUNTERS, README_TEMPLATE, rel, lock, guardMain, commitFiles, cleanupTicket, worktrees } from '../lib/repo.mjs';
+import { TICKETS, EPICS, COUNTERS, README_TEMPLATE, IN_GIT, tryGit, rel, lock, guardMain, commitFiles, cleanupTicket, worktrees } from '../lib/repo.mjs';
 import {
   level, idList, leadOf, workerOf, by, parseTicket, renderTicket, appendHistory,
   allTickets, findTicket, moveTicket, needStatus, ticketTemplate,
@@ -17,14 +17,21 @@ export function cmdInit() {
   }
   fs.mkdirSync(EPICS, { recursive: true });
   const cfg = path.join(TICKETS, 'config.json');
-  if (!fs.existsSync(cfg)) writeJSON(cfg, DEFAULT_CONFIG);
-  else {
+  if (!fs.existsSync(cfg)) {
+    // Release branch: master, or main when only main exists.
+    const has = (b) => IN_GIT && tryGit(['rev-parse', '--verify', '--quiet', `refs/heads/${b}`]) !== null;
+    const releaseBranch = !has('master') && has('main') ? 'main' : DEFAULT_CONFIG.releaseBranch;
+    writeJSON(cfg, { ...DEFAULT_CONFIG, releaseBranch });
+  } else {
     // Config from the old slow-but-sure name: keep the user's commands, add the new keys.
     const c = readJSON(cfg, {});
-    if (c.testerWritable || !c.qaWritable || !c.leadDevBlocked || !c.mergeChecks || !c.devBlocked) {
+    // The first devBlocked default blocked all of docs/, including product docs.
+    const oldDevBlocked = JSON.stringify(c.devBlocked) === JSON.stringify(['tickets/**', 'docs/**']);
+    if (c.testerWritable || !c.qaWritable || !c.leadDevBlocked || !c.mergeChecks || !c.devBlocked || oldDevBlocked || !('setup' in (c.commands || {}))) {
       delete c.testerWritable;
+      if (oldDevBlocked) delete c.devBlocked;
       writeJSON(cfg, { ...DEFAULT_CONFIG, ...c, commands: { ...DEFAULT_CONFIG.commands, ...(c.commands || {}) } });
-      console.log(`updated ${rel(cfg)} (qaWritable, leadDevBlocked, devBlocked, mergeChecks)`);
+      console.log(`updated ${rel(cfg)} (qaWritable, leadDevBlocked, devBlocked, mergeChecks, commands.setup)`);
     }
   }
   if (!fs.existsSync(COUNTERS)) writeJSON(COUNTERS, {});

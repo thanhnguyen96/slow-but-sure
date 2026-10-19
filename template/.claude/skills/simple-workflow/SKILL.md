@@ -35,7 +35,7 @@ If any is missing from the available-skills list, stop and tell the user to run 
 
 | Role | Agent | Default model / effort | Writes | Board |
 |---|---|---|---|---|
-| PM | main conversation (you) | user's own `/model`, `/effort` | `brief.md`, `design.md`, `plan.md`, mockups; small no-ticket fixes | creates BUG; `sw mv` overrides; `dev` → `master` after Gate 3 |
+| PM | main conversation (you) | user's own `/model`, `/effort` | `brief.md`, `design.md`, `plan.md`, mockups; small no-ticket fixes | creates BUG; `sw mv` overrides; `dev` → release branch after Gate 3 |
 | lead-dev | `lead-dev` | sonnet / xhigh | `dev-plan.md`, dev tickets. Never tests, never runs e2e | `new`, `start`, `approve`, `reject`, `reopen` for dev tickets |
 | dev | `dev` (worker) | by level | product code + unit tests in its worktree | `sw merge` its own ticket |
 | reviewer | `reviewer` | opus / medium | nothing (read-only) | none; answers APPROVE / CHANGES to lead-dev |
@@ -50,7 +50,7 @@ Worker levels (defaults; real values via `sw models`):
 | middle | sonnet / xhigh | reopened once |
 | senior | opus / medium | reopened twice or more (cap) |
 
-Hooks enforce two limits: lead-qa and qa may write only inside `qaWritable` (`tickets/config.json`); lead-dev may not write test files (`leadDevBlocked`). If a lead is stuck on the other side's work, it reports to you and you coordinate.
+`.claude/hooks/sw-guard.mjs` limits every subagent (never you): no push, `reset --hard`, `--no-verify` or checkout of the release branch; each role runs only its own `sw` commands (`init`, `mv`, `mode`, `epic new` are yours); dev may not write `devBlocked` (tickets, epic docs, conventions); lead-qa and qa only `qaWritable`; lead-dev no tests (`leadDevBlocked`) and no Playwright; the reviewer runs read-only commands only. Lists are in `tickets/config.json`. If a lead is stuck on the other side's work, it reports to you and you coordinate.
 
 When you spawn a lead, pass `model` and `effort` from `sw models --json` (`lead-dev`, `lead-qa`).
 
@@ -86,7 +86,7 @@ Prefixes: `FEAT`, `BUG`, `REF`, `INIT`, `TEST` (`-c` lists the dev tickets it co
 
 ## Git
 
-- `master`: delivered code; changes only at Gate 3.
+- release branch (`releaseBranch` in `tickets/config.json`: `master`, or `main` if only that exists): delivered code; changes only at Gate 3. Below it is called `<release>`.
 - `dev`: integration branch. Epics, tickets and merged work live here. The main checkout stays on `dev`.
 - `ticket/<ID>`: one branch per ticket, in the worker's worktree. The worker merges it into `dev` with `sw merge`: `--no-ff`, checks on the merged result, aborted with nothing changed on a conflict (exit 2) or red checks (exit 3). The worker then fixes it in its worktree (`git merge dev`) and retries. One merge at a time (lock).
 - A rejected review is fixed forward: the same worker fixes on its branch and merges again.
@@ -98,8 +98,8 @@ Create tickets only for a new feature (`FEAT`), a bug fix (`BUG`), a large refac
 ## Step 1: setup check (first ticketed request in a project)
 
 1. `tickets/config.json` missing: `sw init`.
-2. Branch `dev` missing: `git branch dev master`. Switch the main checkout to `dev`.
-3. Fill `tickets/config.json` `commands` (unit, build, lint, e2e, app) by inspecting the project. `mergeChecks` lists which of them `sw merge` runs. Ask the user only about real choices. For a web project without Playwright, the INIT or first FEAT epic sets it up.
+2. Branch `dev` missing: `git branch dev <release>`. Switch the main checkout to `dev`.
+3. Fill `tickets/config.json` `commands` (setup, unit, build, lint, e2e, app) by inspecting the project. `setup` installs dependencies in a fresh worktree (`npm ci`, `pnpm install --frozen-lockfile`, ...); workers run it first, because a new worktree has no `node_modules`. `mergeChecks` lists which commands `sw merge` runs; a check with an empty command is skipped with a warning, so leave none empty that the project has. Ask the user only about real choices. For a web project without Playwright, the INIT or first FEAT epic sets it up.
 4. `docs/conventions.md` missing: create it from `.claude/skills/simple-workflow/templates/conventions.md`, filling every `<...>` from the real codebase (or the stack in the brief for a new project). Commit it on `dev`. Update it when an epic adds a rule.
 
 ## Step 2: clarify (grilling)
@@ -173,7 +173,7 @@ Loop until the full suite passes.
 
 Before reporting, clean up: `sw clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; no server you or a subagent started may still run, and the app port (the `baseURL` in `playwright.config.*`) must be free.
 
-Ask whether to merge `dev` into `master`. Only after a yes: `git checkout master && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
+Ask whether to merge `dev` into `<release>`. Only after a yes: `git checkout <release> && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
 
 ## PM rules
 

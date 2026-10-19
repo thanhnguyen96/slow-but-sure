@@ -11,14 +11,20 @@ Claude Code skill (`/simple-workflow`, alias `/sw`): ticket-driven software proc
 - **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sw`.
 - **Conventions**: `docs/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
 - **/sw-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
-- **Role limits** (`hooks/sw-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sw` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/` or `docs/`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands). Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
-- **Git**: `ticket/<ID>` → `dev` (integration, via `sw merge`) → `master` (after regression and user approval).
+- **Role limits** (`hooks/sw-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sw` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands). Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
+- **Git**: `ticket/<ID>` → `dev` (integration, via `sw merge`) → release branch (`releaseBranch`: `master`, or `main` if only that exists; after regression and user approval).
 
 ## Install
 
+From the project root, one command (needs Node ≥ 18 and git access to this repo):
+
 ```
-node install.mjs <path-to-project> [--force] [--no-deps]
+npx github:thanhnguyen96/slow-but-sure            # install into the current directory
+npx github:thanhnguyen96/slow-but-sure#v1.0.0     # a pinned tag or commit
+npx github:thanhnguyen96/slow-but-sure --force    # upgrade: overwrite the skill files
 ```
+
+From a clone: `node install.mjs [path-to-project] [--force] [--no-deps]` (path defaults to the current directory).
 
 Copies `template/.claude/` (skills, agents, hooks), adds the hooks to `.claude/settings.json`, updates `.gitignore`, runs `sw init`. Files, hooks and the models file of the old `slow-but-sure` name are removed or migrated.
 

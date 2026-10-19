@@ -46,10 +46,11 @@ export function cmdMerge(pos, flags) {
     process.exit(2);
   }
 
+  const skipped = [];
   if (!flags['no-checks']) {
     for (const name of cfg.mergeChecks || []) {
       const cmd = cfg.commands[name];
-      if (!cmd) continue;
+      if (!cmd) { skipped.push(name); continue; }
       process.stdout.write(`check ${name}: ${cmd} ... `);
       const r = runCheck(name, cmd);
       console.log(r.ok ? 'PASS' : `FAIL (exit ${r.status})`);
@@ -75,6 +76,8 @@ export function cmdMerge(pos, flags) {
   fs.writeFileSync(after.file, renderTicket({ ...after.fm, merge }, after.body));
   commitFiles([log, after.file], `board: ${t.id} merged as ${merge}`, flags);
 
+  if (flags['no-checks']) console.log('WARNING: --no-checks: the merged result was not checked.');
+  else if (skipped.length) console.log(`WARNING: no command for ${skipped.join(', ')} in tickets/config.json; those checks did not run. Tell your lead.`);
   console.log(`${t.id}: merged ${branch}@${head} into ${dev} as ${merge}; status ready-to-review.`);
   console.log(`report to your lead: "${t.id} merged as ${merge}". Keep your worktree until the review is approved.`);
 }

@@ -5,7 +5,7 @@
 // File writes (Edit/Write, and shell redirects, rm, mv, cp, touch, mkdir, tee, sed -i):
 //   lead-qa, qa:  only inside `qaWritable` (tickets/config.json); never product code.
 //   lead-dev:     never inside `leadDevBlocked`; tests belong to dev and qa workers.
-//   dev:          never inside `devBlocked` (tickets/, docs/); the board changes only through `sw`.
+//   dev:          never inside `devBlocked` (tickets/, docs/epics/, docs/conventions.md); the board changes only through `sw`.
 //   reviewer:     nothing.
 // Bash:
 //   every role:   no git push, reset --hard, branch -D, --no-verify, checkout of the release branch.
@@ -20,7 +20,7 @@ const ROLES = ['lead-dev', 'dev', 'lead-qa', 'qa', 'reviewer'];
 const DEFAULTS = {
   qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'tickets/*/TEST-*.md'],
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
-  devBlocked: ['tickets/**', 'docs/**'],
+  devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
 };
 const SW_ALLOWED = {
   dev: ['merge', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
@@ -79,7 +79,7 @@ function writeDenied(file) {
     return `may not modify tests (${file}). Blocked: ${list('leadDevBlocked').join(', ')}. Unit tests are written by dev workers, e2e tests by qa. If a test looks wrong, report it to the PM.`;
   }
   if (agent === 'dev' && matches(file, list('devBlocked'))) {
-    return `may not modify ${file}. Blocked: ${list('devBlocked').join(', ')}. The board changes only through \`sw\`; docs belong to the PM and leads. Report the problem instead.`;
+    return `may not modify ${file}. Blocked: ${list('devBlocked').join(', ')}. The board changes only through \`sw\`; epic docs and conventions belong to the PM and leads. Report the problem instead.`;
   }
   if ((agent === 'qa' || agent === 'lead-qa') && !matches(file, list('qaWritable'))) {
     return `may not modify ${file}. Writable: ${list('qaWritable').join(', ')}. If product code is wrong, report it to the PM as a dev-caused failure instead of changing it.`;

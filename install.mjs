@@ -2,7 +2,8 @@
 // Install simple-workflow into a target project, plus its prerequisites:
 //   - grill-me + grilling skills (mattpocock/skills, pinned commit) into <target>/.claude/skills/
 //   - opendesign Claude Code plugin (manalkaff/opendesign), user scope, via the `claude` CLI
-// Usage: node install.mjs <target-project-dir> [--force] [--no-deps]
+// Usage: node install.mjs [target-project-dir] [--force] [--no-deps]   (target defaults to the current directory)
+//        npx github:thanhnguyen96/slow-but-sure [target] [--force] [--no-deps]
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -32,12 +33,11 @@ const OPENDESIGN_PLUGIN = 'opendesign@opendesign';
 const args = process.argv.slice(2);
 const force = args.includes('--force');
 const noDeps = args.includes('--no-deps');
-const targetArg = args.find((a) => !a.startsWith('--'));
-if (!targetArg) {
-  console.error('usage: node install.mjs <target-project-dir> [--force] [--no-deps]');
-  process.exit(1);
+if (args.includes('--help') || args.includes('-h')) {
+  console.log('usage: node install.mjs [target-project-dir] [--force] [--no-deps]   (target defaults to the current directory)');
+  process.exit(0);
 }
-const TARGET = path.resolve(targetArg);
+const TARGET = path.resolve(args.find((a) => !a.startsWith('-')) || '.');
 if (!fs.existsSync(TARGET)) {
   console.error(`target does not exist: ${TARGET}`);
   process.exit(1);
