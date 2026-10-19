@@ -1,16 +1,17 @@
-# slow-but-sure
+# simple-workflow
 
-Claude Code skill: ticket-driven software process.
+Claude Code skill (`/simple-workflow`, alias `/sw`): ticket-driven software process.
 
-- **PM**: main conversation (grills the user, designs, coordinates).
-- **dev-lead / tester-lead**: leads (default Sonnet/xhigh); plan, create tickets, dispatch workers, review, merge.
-- **dev / tester**: workers, one ticket each, in their own git worktree. Level per ticket: junior (Haiku/max) by default; each reopen raises it one step to middle (Sonnet/xhigh), then senior (Opus/medium, cap). A reopen requires a context summary.
-- **Models**: `.claude/slow-but-sure.models.json` (created on first `/slow-but-sure on`) sets model + effort for the leads and the three levels. `/slow-but-sure models` shows the table. The PM is your main conversation: set its model and effort yourself with `/model` and `/effort`.
-- **Board**: `tickets/{todo,in-progress,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `board init` writes `tickets/README.md` describing statuses, who moves what when, reopen and levels.
-- **Tests**: unit tests by dev; Playwright e2e in `tests/e2e/` by testers (`getByTestId`, ticket comment per test). Testers are hook-blocked from editing product code.
-- **Conventions**: on the first ticketed request the PM writes `docs/conventions.md` from `templates/conventions.md`, filled from the real codebase; leads pass it to every worker.
-- **/sbs-context**: table of the PM and every subagent in this session: model (effort), current context size, output tokens, state (running only; `--all` adds finished ones). Read from the session transcripts.
-- **Git**: `ticket/<ID>` → `dev` (integration) → `master` (after regression + user approval).
+- **PM**: main conversation. Grills the user, writes the epic (brief, design + mockups, system design + rough plan), coordinates.
+- **lead-dev / lead-qa**: leads (default Sonnet/xhigh). Read the epic, write the detailed plan (`dev-plan.md` / `qa-plan.md`), create tickets, dispatch workers, approve or reject merged tickets. lead-dev never edits tests or runs e2e; lead-qa never edits product code (both hook-enforced). Problems on the other side go to the PM.
+- **dev / qa**: workers, one ticket each, in their own git worktree. They merge their own branch into `dev` with `sw merge` and report the merge commit. Level per ticket: junior (Haiku/max), each reopen raises it to middle (Sonnet/xhigh), then senior (Opus/medium, cap).
+- **reviewer**: one per round (default Opus/medium), spawned by lead-dev. Reads conventions and the whole epic once, then reviews each dev ticket as soon as it is merged. Read-only; answers APPROVE or CHANGES. Rejected tickets are fixed forward by the same worker.
+- **Models**: `.claude/simple-workflow.models.json` (created on first `/sw on`). `/sw models` shows the table. Set the PM's model and effort yourself with `/model` and `/effort`.
+- **Board**: `tickets/{todo,in-progress,ready-to-review,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `tickets/README.md` describes every transition.
+- **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sw`.
+- **Conventions**: `docs/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
+- **/sw-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
+- **Git**: `ticket/<ID>` → `dev` (integration, via `sw merge`) → `master` (after regression and user approval).
 
 ## Install
 
@@ -18,40 +19,48 @@ Claude Code skill: ticket-driven software process.
 node install.mjs <path-to-project> [--force] [--no-deps]
 ```
 
-Copies `template/.claude/` (skill, agents, hooks), adds the reminder hook to `.claude/settings.json`, updates `.gitignore`, runs `board init`.
+Copies `template/.claude/` (skills, agents, hooks), adds the hooks to `.claude/settings.json`, updates `.gitignore`, runs `sw init`. Files, hooks and the models file of the old `slow-but-sure` name are removed or migrated.
 
 Prerequisites (skipped with `--no-deps`):
 - `grill-me` + `grilling` skills from [mattpocock/skills](https://github.com/mattpocock/skills) (pinned commit) into `<project>/.claude/skills/`.
-- `opendesign` plugin from [manalkaff/opendesign](https://github.com/manalkaff/opendesign), user scope, via `claude plugin install`. Without the `claude` CLI on PATH, the installer prints the `/plugin` commands to run manually.
+- `opendesign` plugin from [manalkaff/opendesign](https://github.com/manalkaff/opendesign), user scope, via `claude plugin install`.
 
-Then in the project: restart Claude Code, `/slow-but-sure on`. Turn off with `/slow-but-sure off` (no tokens spent while off).
+Then in the project: restart Claude Code, `/sw on`. Turn off with `/sw off` (no tokens spent while off).
 
-## Board CLI
+## sw CLI
+
+`sw` = `node .claude/skills/simple-workflow/scripts/sw.mjs`. No arguments prints the help.
 
 ```
-node .claude/skills/slow-but-sure/scripts/board.mjs new FEAT "Login page" --by dev-lead --epic 20261018-auth
-node .claude/skills/slow-but-sure/scripts/board.mjs move FEAT-0001 in-progress --by dev-lead --assignee dev
-node .claude/skills/slow-but-sure/scripts/board.mjs move FEAT-0001 in-progress --by dev-lead --assignee dev --note "AC2 failed: ..."   # reopen, level +1
-node .claude/skills/slow-but-sure/scripts/board.mjs list
-node .claude/skills/slow-but-sure/scripts/board.mjs models
+sw epic new edit-todo                         # docs/epics/20261019-edit-todo/
+sw new feat "Edit todo title" -e 20261019-edit-todo
+sw start FEAT-0001                            # todo -> in-progress
+sw merge FEAT-0001                            # worker: merge into dev + checks -> ready-to-review
+                                              #   exit 2 conflict, exit 3 checks failed, dev unchanged
+sw approve FEAT-0001                          # -> ready-to-test, removes worktree + branch
+sw reject FEAT-0001 "store.js:35 not trimmed" # -> in-progress, same worker fixes and merges again
+sw reopen FEAT-0001 "AC2 failed: ..."         # -> in-progress, level +1
+sw done FEAT-0001 TEST-0001                   # after regression
+sw ls [status] [-e epic]   sw show FEAT-0001   sw epic   sw clean   sw models
 ```
 
-Board changes are committed automatically on the integration branch and refused inside linked worktrees.
+Board changes are commits on `dev` in the main checkout; `sw` finds the main checkout from any worktree. One writer at a time (lock in the git dir).
 
 ## Layout
 
 ```
 install.mjs
 template/.claude/
-  skills/slow-but-sure/SKILL.md        PM process
-  skills/slow-but-sure/scripts/board.mjs
-  skills/slow-but-sure/templates/conventions.md   starting point for docs/conventions.md
-  skills/slow-but-sure/templates/tickets-README.md   copied to tickets/README.md by board init
-  skills/slow-but-sure/scripts/context.mjs   used by /sbs-context
-  skills/sbs-context/SKILL.md          /sbs-context command
-  agents/{dev-lead,dev,tester-lead,tester}.md
-  hooks/sbs-reminder.mjs               UserPromptSubmit, only when ON
-  hooks/sbs-tester-guard.mjs           PreToolUse for testers
+  skills/simple-workflow/SKILL.md                 PM process
+  skills/simple-workflow/scripts/sw.mjs           board, epics, merge
+  skills/simple-workflow/scripts/context.mjs      used by /sw-context
+  skills/simple-workflow/templates/conventions.md starting point for docs/conventions.md
+  skills/simple-workflow/templates/tickets-README.md   copied to tickets/README.md by sw init
+  skills/sw/SKILL.md                              /sw alias
+  skills/sw-context/SKILL.md                      /sw-context
+  agents/{lead-dev,dev,reviewer,lead-qa,qa}.md
+  hooks/sw-reminder.mjs                           UserPromptSubmit, only when ON
+  hooks/sw-guard.mjs                              PreToolUse: qa write limits, lead-dev test limit
 ```
 
 Requires Claude Code with nested subagents (default depth 3) and Node ≥ 18.

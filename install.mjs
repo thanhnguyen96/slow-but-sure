@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Install slow-but-sure into a target project, plus its prerequisites:
+// Install simple-workflow into a target project, plus its prerequisites:
 //   - grill-me + grilling skills (mattpocock/skills, pinned commit) into <target>/.claude/skills/
 //   - opendesign Claude Code plugin (manalkaff/opendesign), user scope, via the `claude` CLI
 // Usage: node install.mjs <target-project-dir> [--force] [--no-deps]
@@ -10,14 +10,17 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE = path.join(HERE, 'template');
-const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"';
-// Tester guard lives in project settings (not agent frontmatter): frontmatter hooks need the
+const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-reminder.mjs"';
+// The guard lives in project settings (not agent frontmatter): frontmatter hooks need the
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
-const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"';
-const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/settings.local.json', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
+const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-guard.mjs"';
+// Hook commands and files of the old slow-but-sure name, removed on install.
+const LEGACY_HOOK_CMDS = ['node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"'];
+const LEGACY_PATHS = ['.claude/hooks/sbs-reminder.mjs', '.claude/hooks/sbs-tester-guard.mjs', '.claude/skills/slow-but-sure', '.claude/skills/sbs-context', '.claude/slow-but-sure.on'];
+const GITIGNORE_LINES = ['.claude/simple-workflow.on', '.claude/settings.local.json', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
 
-// Agent files from older versions (roles were renamed to dev-lead/dev/tester-lead/tester).
-const LEGACY_AGENTS = ['senior-dev', 'junior-dev', 'senior-tester', 'junior-tester'];
+// Agent files from older versions (roles are now lead-dev/dev/reviewer/lead-qa/qa).
+const LEGACY_AGENTS = ['senior-dev', 'junior-dev', 'senior-tester', 'junior-tester', 'dev-lead', 'tester-lead', 'tester'];
 
 const GRILL_REPO = 'mattpocock/skills';
 const GRILL_SHA = '49dd158d1076134a641b33efb035946536778336';
@@ -63,6 +66,26 @@ function removeLegacyAgents() {
       console.log(`  removed legacy agent ${path.relative(TARGET, f)}`);
     }
   }
+  for (const p of LEGACY_PATHS) {
+    const f = path.join(TARGET, p);
+    if (!fs.existsSync(f)) continue;
+    fs.rmSync(f, { recursive: true, force: true });
+    console.log(`  removed legacy ${p}`);
+  }
+  // A models file from the old name keeps the user's choices: carry them over once.
+  const oldModels = path.join(TARGET, '.claude', 'slow-but-sure.models.json');
+  const newModels = path.join(TARGET, '.claude', 'simple-workflow.models.json');
+  if (fs.existsSync(oldModels)) {
+    if (!fs.existsSync(newModels)) {
+      try {
+        const m = JSON.parse(fs.readFileSync(oldModels, 'utf8'));
+        const out = { 'lead-dev': m['dev-lead'], 'lead-qa': m['tester-lead'], levels: m.levels };
+        fs.writeFileSync(newModels, JSON.stringify(out, null, 2) + '\n');
+        console.log('  migrated .claude/slow-but-sure.models.json -> simple-workflow.models.json');
+      } catch {}
+    }
+    fs.rmSync(oldModels);
+  }
 }
 
 function mergeSettings() {
@@ -76,6 +99,13 @@ function mergeSettings() {
   }
   settings.hooks ??= {};
   let changed = false;
+  for (const event of Object.keys(settings.hooks)) {
+    const before = JSON.stringify(settings.hooks[event]);
+    settings.hooks[event] = settings.hooks[event]
+      .map((g) => ({ ...g, hooks: (g.hooks || []).filter((h) => !LEGACY_HOOK_CMDS.includes(h.command)) }))
+      .filter((g) => g.hooks.length);
+    if (JSON.stringify(settings.hooks[event]) !== before) { console.log(`  removed legacy ${event} hook`); changed = true; }
+  }
   for (const [event, matcher, command] of [
     ['UserPromptSubmit', undefined, REMINDER_CMD],
     ['PreToolUse', 'Edit|Write|NotebookEdit', GUARD_CMD],
@@ -97,7 +127,7 @@ function mergeGitignore() {
   const missing = GITIGNORE_LINES.filter((l) => !have.has(l));
   if (!missing.length) return;
   const sep = existing && !existing.endsWith('\n') ? '\n' : '';
-  fs.writeFileSync(file, `${existing}${sep}\n# slow-but-sure\n${missing.join('\n')}\n`);
+  fs.writeFileSync(file, `${existing}${sep}\n# simple-workflow\n${missing.join('\n')}\n`);
   console.log(`  .gitignore += ${missing.join(', ')}`);
 }
 
@@ -150,7 +180,7 @@ function installOpendesign() {
   return true;
 }
 
-console.log(`Installing slow-but-sure into ${TARGET}`);
+console.log(`Installing simple-workflow into ${TARGET}`);
 copyTree(TEMPLATE, TARGET);
 removeLegacyAgents();
 mergeSettings();
@@ -162,12 +192,12 @@ if (noDeps) {
   await installGrillSkills();
   installOpendesign();
 }
-execFileSync(process.execPath, [path.join(TARGET, '.claude/skills/slow-but-sure/scripts/board.mjs'), 'init'], {
-  cwd: TARGET, stdio: 'inherit', env: { ...process.env, SBS_ROOT: TARGET },
+execFileSync(process.execPath, [path.join(TARGET, '.claude/skills/simple-workflow/scripts/sw.mjs'), 'init'], {
+  cwd: TARGET, stdio: 'inherit', env: { ...process.env, SW_ROOT: TARGET },
 });
 console.log(`
 Done. Next:
   1. Review tickets/config.json (commands, integration branch).
   2. Commit the new files; create branch 'dev' if you don't have one.
-  3. Restart Claude Code in the project, then: /slow-but-sure on
-     (creates .claude/slow-but-sure.models.json: model + effort per role/level; /slow-but-sure models to view)`);
+  3. Restart Claude Code in the project, then: /sw on   (alias of /simple-workflow)
+     (creates .claude/simple-workflow.models.json: model + effort per role/level; /sw models to view)`);

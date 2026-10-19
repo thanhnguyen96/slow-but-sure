@@ -1,6 +1,6 @@
 # Project conventions
 
-<!-- Created by the slow-but-sure PM from the existing codebase. Every dev and tester reads this before working.
+<!-- Created by the simple-workflow PM from the existing codebase. Every dev, qa and reviewer reads this before working.
      Keep it short and concrete: rules that someone new to the code would get wrong. Replace every <...>. -->
 
 Other docs to follow: <CONTRIBUTING.md, CLAUDE.md, ... or "none">
@@ -15,7 +15,7 @@ Other docs to follow: <CONTRIBUTING.md, CLAUDE.md, ... or "none">
 |---|---|
 | <src/...> | <...> |
 | <tests/unit/ or next to code> | unit tests |
-| tests/e2e/ | Playwright e2e tests (testers only) |
+| tests/e2e/ | Playwright e2e tests (qa only) |
 
 ## Code style
 - Formatting / lint: <tool + config file>; run `<lint command>` before committing.
@@ -39,7 +39,7 @@ Other docs to follow: <CONTRIBUTING.md, CLAUDE.md, ... or "none">
 - Runner: `<unit command>`; files `<*.test.js next to code | tests/unit/>`.
 - Every new piece of logic gets tests: happy path, edge cases, error cases. No tests that only assert mocks were called.
 
-## E2E tests (testers)
+## E2E tests (qa)
 - Playwright in `tests/e2e/`, one spec file per feature area, locate with `page.getByTestId(...)`.
 - Comment above every `test()`: `// Ticket: <DEV-ID> (<TEST-ID>) — ACn: <what it checks>`.
 - Arrange / Act / Assert visible in each test; no `waitForTimeout`; each test creates its own data.
