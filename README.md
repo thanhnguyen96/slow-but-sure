@@ -52,7 +52,10 @@ Board changes are commits on `dev` in the main checkout; `sw` finds the main che
 install.mjs
 template/.claude/
   skills/simple-workflow/SKILL.md                 PM process
-  skills/simple-workflow/scripts/sw.mjs           board, epics, merge
+  skills/simple-workflow/scripts/sw.mjs           sw CLI entry: help, arg parsing, command table
+  skills/simple-workflow/scripts/lib/             constants, util, repo (git, lock, commits), tickets (files, epic logs)
+  skills/simple-workflow/scripts/commands/        board (init/new/start/note/mv/ls/show/clean), merge,
+                                                  review (approve/reject/reopen/done), epic, setup (models/mode)
   skills/simple-workflow/scripts/context.mjs      used by /sw-context
   skills/simple-workflow/templates/conventions.md starting point for docs/conventions.md
   skills/simple-workflow/templates/tickets-README.md   copied to tickets/README.md by sw init

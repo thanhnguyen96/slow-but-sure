@@ -1,0 +1,45 @@
+// Shared constants and defaults.
+
+export const STATUSES = ['todo', 'in-progress', 'ready-to-review', 'ready-to-test', 'done'];
+export const TYPES = ['FEAT', 'BUG', 'REF', 'INIT', 'TEST'];
+export const ROLES = ['pm', 'lead-dev', 'dev', 'lead-qa', 'qa', 'reviewer', 'user'];
+export const LEVELS = ['junior', 'middle', 'senior'];
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+export const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable', 'inherit'];
+export const FM_KEYS = ['id', 'type', 'title', 'epic', 'created', 'updated', 'status', 'assigner', 'assignee', 'level', 'branch', 'merge', 'depends_on', 'covers'];
+export const DEFAULT_CONFIG = {
+  integrationBranch: 'dev',
+  releaseBranch: 'master',
+  web: true,
+  commands: { unit: '', build: '', lint: '', e2e: 'npx playwright test --reporter=line', app: '' },
+  // Commands `sw merge` runs on the merged result before committing it.
+  mergeChecks: ['unit', 'build', 'lint'],
+  // lead-qa and qa may write only here (hook-enforced).
+  qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'tickets/*/TEST-*.md'],
+  // lead-dev may not write here (hook-enforced): tests belong to dev and qa workers.
+  leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
+};
+// Model + effort per subagent role and per worker level. Users edit .claude/simple-workflow.models.json.
+// The PM is the main conversation: its model and effort are the user's own (/model, /effort).
+export const DEFAULT_MODELS = {
+  'lead-dev': { model: 'sonnet', effort: 'xhigh' },
+  'lead-qa': { model: 'sonnet', effort: 'xhigh' },
+  reviewer: { model: 'opus', effort: 'medium' },
+  levels: {
+    junior: { model: 'haiku', effort: 'max' },
+    middle: { model: 'sonnet', effort: 'xhigh' },
+    senior: { model: 'opus', effort: 'medium' },
+  },
+};
+export const MODEL_ROWS = [
+  ['lead-dev', (m) => m['lead-dev'], 'dev plan, dev tickets, review decisions'],
+  ['lead-qa', (m) => m['lead-qa'], 'qa plan, TEST tickets, test review, regression'],
+  ['reviewer', (m) => m.reviewer, 'reviews merged dev tickets, one per round'],
+  ['junior', (m) => m.levels.junior, 'dev/qa workers, default level'],
+  ['middle', (m) => m.levels.middle, 'workers on a ticket reopened once'],
+  ['senior', (m) => m.levels.senior, 'workers on a ticket reopened 2+ times (cap)'],
+];
+export const MODEL_NOTES = { haiku: 'fastest, cheapest', sonnet: 'balanced', opus: 'strongest reasoning', inherit: 'same as caller' };
+export const EFFORT_NOTES = { low: 'quick', medium: 'balanced', high: 'careful', xhigh: 'very careful', max: 'deepest, slowest' };
+export const LOCK_WAIT_MS = 15 * 60 * 1000;
+export const LOCK_STALE_MS = 30 * 60 * 1000;
