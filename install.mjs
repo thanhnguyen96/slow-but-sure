@@ -14,6 +14,7 @@ const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-reminder.mjs"';
 // The guard lives in project settings (not agent frontmatter): frontmatter hooks need the
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
 const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-guard.mjs"';
+const GUARD_MATCHER = 'Edit|Write|NotebookEdit|Bash';
 // Hook commands and files of the old slow-but-sure name, removed on install.
 const LEGACY_HOOK_CMDS = ['node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"'];
 const LEGACY_PATHS = ['.claude/hooks/sbs-reminder.mjs', '.claude/hooks/sbs-tester-guard.mjs', '.claude/skills/slow-but-sure', '.claude/skills/sbs-context', '.claude/slow-but-sure.on'];
@@ -108,10 +109,19 @@ function mergeSettings() {
   }
   for (const [event, matcher, command] of [
     ['UserPromptSubmit', undefined, REMINDER_CMD],
-    ['PreToolUse', 'Edit|Write|NotebookEdit', GUARD_CMD],
+    ['PreToolUse', GUARD_MATCHER, GUARD_CMD],
   ]) {
     settings.hooks[event] ??= [];
-    if (settings.hooks[event].some((g) => (g.hooks || []).some((h) => h.command === command))) continue;
+    const existing = settings.hooks[event].find((g) => (g.hooks || []).some((h) => h.command === command));
+    if (existing) {
+      // Older installs ran the guard only on Edit|Write|NotebookEdit.
+      if (matcher && existing.matcher !== matcher) {
+        existing.matcher = matcher;
+        console.log(`  updated ${event} hook matcher to ${matcher}`);
+        changed = true;
+      }
+      continue;
+    }
     settings.hooks[event].push({ ...(matcher && { matcher }), hooks: [{ type: 'command', command }] });
     console.log(`  added ${event} hook to .claude/settings.json`);
     changed = true;

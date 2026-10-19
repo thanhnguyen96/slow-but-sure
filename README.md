@@ -11,6 +11,7 @@ Claude Code skill (`/simple-workflow`, alias `/sw`): ticket-driven software proc
 - **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sw`.
 - **Conventions**: `docs/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
 - **/sw-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
+- **Role limits** (`hooks/sw-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sw` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/` or `docs/`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands). Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
 - **Git**: `ticket/<ID>` → `dev` (integration, via `sw merge`) → `master` (after regression and user approval).
 
 ## Install
@@ -63,7 +64,7 @@ template/.claude/
   skills/sw-context/SKILL.md                      /sw-context
   agents/{lead-dev,dev,reviewer,lead-qa,qa}.md
   hooks/sw-reminder.mjs                           UserPromptSubmit, only when ON
-  hooks/sw-guard.mjs                              PreToolUse: qa write limits, lead-dev test limit
+  hooks/sw-guard.mjs                              PreToolUse (Edit|Write|NotebookEdit|Bash): role limits, subagents only
 ```
 
 Requires Claude Code with nested subagents (default depth 3) and Node ≥ 18.

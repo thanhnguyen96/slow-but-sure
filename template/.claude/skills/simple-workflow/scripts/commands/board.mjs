@@ -21,10 +21,10 @@ export function cmdInit() {
   else {
     // Config from the old slow-but-sure name: keep the user's commands, add the new keys.
     const c = readJSON(cfg, {});
-    if (c.testerWritable || !c.qaWritable || !c.leadDevBlocked || !c.mergeChecks) {
+    if (c.testerWritable || !c.qaWritable || !c.leadDevBlocked || !c.mergeChecks || !c.devBlocked) {
       delete c.testerWritable;
       writeJSON(cfg, { ...DEFAULT_CONFIG, ...c, commands: { ...DEFAULT_CONFIG.commands, ...(c.commands || {}) } });
-      console.log(`updated ${rel(cfg)} (qaWritable, leadDevBlocked, mergeChecks)`);
+      console.log(`updated ${rel(cfg)} (qaWritable, leadDevBlocked, devBlocked, mergeChecks)`);
     }
   }
   if (!fs.existsSync(COUNTERS)) writeJSON(COUNTERS, {});
