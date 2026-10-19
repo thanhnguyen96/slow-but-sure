@@ -42,7 +42,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
     await expect(page.getByTestId('login-form-error-alert')).toBeVisible();
   });
   ```
-- Plain Arrange, Act and Assert steps; descriptive names; no helpers that hide the steps. Never `waitForTimeout`. Each test sets up its own data.
+- Plain Arrange, Act and Assert steps; descriptive names; no helpers that hide the steps. Never `waitForTimeout`. Each test sets up its own data. After an action that calls the server (add, save, delete), assert its visible result before the next action, so the test never races the app.
 
 ## Authoring mode
 
@@ -68,14 +68,15 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 
 ## Regression mode
 
-1. Run the full e2e command from `tickets/config.json` (the whole `tests/e2e` suite) once, starting the app if the config needs it.
-2. All pass on the first run: `sbs done <IDs>` for every ready-to-test TEST ticket of the epic and every dev ticket they cover.
+1. Relaunch: if a TEST ticket of the epic is in in-progress (`sbs ls -e <epic>`), finish it first (step 4.2 with `git switch ticket/<ID> && git merge dev`), then continue.
+2. Run the full e2e command from `tickets/config.json` (the whole `tests/e2e` suite) once, starting the app if the config needs it.
+3. All pass on the first run: `sbs done <IDs>` for every ready-to-test TEST ticket of the epic and every dev ticket they cover.
    Then save screenshots for the PM's mockup check: with the app running, one PNG per page and per state listed in `design.md` (empty, with data, error, ...), to `docs/epics/<epic>/screenshots/<page>-<state>.png`. Static pages: `npx playwright screenshot --full-page <baseURL><route> <file>`. States that need data or clicks: a throwaway Playwright script outside the repo (for example in the OS temp folder) that sets up the state through the UI or API and calls `page.screenshot`. Commit the screenshots. Stop the app.
-3. For each failure, read the error, trace and screenshot, then compare the spec, the test and the app:
+4. For each failure, read the error, trace and screenshot, then compare the spec, the test and the app:
    - **Test-caused** (wrong locator, wrong expectation versus the spec, flaky wait): reopen the TEST ticket that owns the test (the id in its `// Ticket:` comment), even from done. Don't create a new TEST ticket.
      1. `sbs reopen <TEST-ID> "<context summary: failing test, error, why it is the test's fault>"`. The level goes up one step.
      2. Spawn a qa worker at the new level, in the foreground. Start its prompt with `REOPENED` and the same summary; the branch line is `git switch ticket/<ID> && git merge dev` (or `git switch -c ticket/<ID> dev` if it was deleted).
      3. Review and `sbs approve` its merge, then rerun.
    - **Dev-caused** (the app doesn't meet `design.md` or the ACs): don't touch the code. `sbs note <DEV-ID> "<evidence>"` and report to the PM.
    - **Unclear** (the spec is ambiguous): report to the PM with both readings.
-4. Final report: the command, totals (passed, failed, skipped), the screenshot files, each failure with classification, test name, ticket IDs, error and artifact paths.
+5. Final report: the command, totals (passed, failed, skipped), the screenshot files, each failure with classification, test name, ticket IDs, error and artifact paths.

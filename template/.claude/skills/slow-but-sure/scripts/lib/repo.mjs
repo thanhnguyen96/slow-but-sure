@@ -86,6 +86,12 @@ export function lock() {
   }
 }
 
+// Test runs in the main checkout rewrite their reports; those never block a merge, even when tracked.
+const RUN_OUTPUT = /^(test-results|playwright-report|coverage)\//;
+function dirtyFiles() {
+  return git(['status', '--porcelain', '--untracked-files=no']).split('\n').filter((l) => l && !RUN_OUTPUT.test(l.replace(/^\s*\S+\s+/, ''))).join('\n');
+}
+
 export function guardMain(flags, { clean = false } = {}) {
   if (!IN_GIT || flags['no-commit']) return;
   const branch = tryGit(['rev-parse', '--abbrev-ref', 'HEAD']);
@@ -94,11 +100,11 @@ export function guardMain(flags, { clean = false } = {}) {
   if (fs.existsSync(path.resolve(MAIN, git(['rev-parse', '--git-dir']), 'MERGE_HEAD'))) die('a merge is already in progress in the main checkout');
   if (clean) {
     // A lead may be between an edit and its commit: wait a little before giving up.
-    let dirty = git(['status', '--porcelain', '--untracked-files=no']);
+    let dirty = dirtyFiles();
     for (let i = 0; dirty && i < DIRTY_WAIT_S / 5; i++) {
       if (!i) console.log('main checkout has uncommitted changes; waiting for the lead to commit them');
       sleep(5000);
-      dirty = git(['status', '--porcelain', '--untracked-files=no']);
+      dirty = dirtyFiles();
     }
     if (dirty) die(`the main checkout has uncommitted changes; the lead must commit or stash them first:\n${dirty}`);
   }
