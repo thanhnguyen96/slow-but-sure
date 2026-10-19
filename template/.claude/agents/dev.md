@@ -26,7 +26,7 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 - Change only what the Scope needs. Keep the Contracts exactly as written. Never edit `tickets/` or `docs/`. Never push. Never spawn agents.
 - Write unit tests for every new piece of logic. A test must fail if the code were wrong (assert values, not just that something exists). Never weaken an existing test to make your change pass; if one seems wrong, report it.
 - Use the exact `data-testid` values from the ticket or `design.md`.
-- If you start the app or a dev server, stop it before you report and check its port is free (Windows: `netstat -ano | findstr :<port>` then `taskkill /PID <pid> /F`; elsewhere `lsof -ti :<port> | xargs kill`).
+- If you start the app or a dev server, stop it before you report and check its port is free (Windows: `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`).
 - If the ticket is unclear or you are stuck after a reasonable attempt, stop and report the question. Don't guess at product behavior.
 
 ## Done: merge it yourself

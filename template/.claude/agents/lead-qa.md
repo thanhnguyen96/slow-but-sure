@@ -24,7 +24,7 @@ You are the QA lead in the simple-workflow process. The prompt says whether you 
 
 - You never modify product code, frontend or backend. A hook blocks writes outside `qaWritable` in `tickets/config.json`. Don't work around it with shell commands. If the app is wrong, report it to the PM.
 - You work in the main checkout on `dev`. Commit every change you make there right away: workers run `sw merge` in this checkout and it refuses while there are uncommitted changes.
-- Always run Playwright with `--reporter=line` (the HTML reporter opens a server on failure and blocks the shell). Never use `playwright show-report`. After every e2e run, stop any server you started and check the app port (the `baseURL` in `playwright.config.*`) is free: Windows `netstat -ano | findstr :<port>` then `taskkill /PID <pid> /F`; elsewhere `lsof -ti :<port> | xargs kill`.
+- Always run Playwright with `--reporter=line` (the HTML reporter opens a server on failure and blocks the shell). Never use `playwright show-report`. After every e2e run, stop any server you started and check the app port (the `baseURL` in `playwright.config.*`) is free: Windows `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`.
 
 ## Test style (you and your workers)
 

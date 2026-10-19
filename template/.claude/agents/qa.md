@@ -25,7 +25,7 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 - First run the branch command from your prompt.
 - Only write inside `tests/e2e/` (and `playwright.config.*` if the ticket says so). Never modify product code: a hook blocks it; don't work around it with shell commands. Never edit `tickets/` or `docs/`. Never push. Never spawn agents.
 - If the app seems wrong, don't fix it. Report it.
-- Run Playwright with `--reporter=line`. After every e2e run, stop any server you started and check the app port (the `baseURL` in `playwright.config.*`) is free: Windows `netstat -ano | findstr :<port>` then `taskkill /PID <pid> /F`; elsewhere `lsof -ti :<port> | xargs kill`. Never leave `npm start` or a preview running.
+- Run Playwright with `--reporter=line`. After every e2e run, stop any server you started and check the app port (the `baseURL` in `playwright.config.*`) is free: Windows `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`. Never leave `npm start` or a preview running.
 
 ## Test style
 
