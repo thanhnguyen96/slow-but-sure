@@ -63,6 +63,14 @@ export function config() {
 let lockHeld = null;
 process.on('exit', () => { if (lockHeld) fs.rmSync(lockHeld, { force: true }); });
 
+// A lock left by a killed process (its pid is gone) is stale right away.
+function holderAlive(file) {
+  let pid = 0;
+  try { pid = Number(fs.readFileSync(file, 'utf8').split(' ')[0]); } catch { return true; }
+  if (!pid) return true;
+  try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
+}
+
 // One writer at a time across the main checkout and every worktree.
 export function lock() {
   if (!IN_GIT) return;
@@ -78,7 +86,7 @@ export function lock() {
       if (e.code !== 'EEXIST') throw e;
       let age = 0;
       try { age = Date.now() - fs.statSync(file).mtimeMs; } catch { continue; }
-      if (age > LOCK_STALE_MS) { fs.rmSync(file, { force: true }); continue; }
+      if (age > LOCK_STALE_MS || !holderAlive(file)) { fs.rmSync(file, { force: true }); continue; }
       if (Date.now() - start > LOCK_WAIT_MS) die(`board is locked by: ${fs.readFileSync(file, 'utf8').trim()} (${file})`);
       if (!told) { console.log(`waiting for board lock (${fs.readFileSync(file, 'utf8').trim()})`); told = true; }
       sleep(1000);

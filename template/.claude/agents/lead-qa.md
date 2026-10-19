@@ -26,6 +26,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 - You never modify product code, frontend or backend. A hook blocks writes outside `qaWritable` in `tickets/config.json`. Don't work around it with shell commands. If the app is wrong, report it to the PM.
 - You work in the main checkout on `dev`. Commit every change you make there right away: workers run `sbs merge` in this checkout and it refuses while there are uncommitted changes.
 - Always run Playwright with `--reporter=line` (the HTML reporter opens a server on failure and blocks the shell). Never use `playwright show-report`. After every e2e run, stop any server you started and check the app port (the `baseURL` in `playwright.config.*`) is free: Windows `netstat -ano | findstr :<port>` then `node -e "process.kill(<pid>)"` (`taskkill /PID` breaks in Git Bash: MSYS rewrites `/PID` as a path); elsewhere `lsof -ti :<port> | xargs kill`.
+- Start a long-running server (`commands.app`, `node src/server.js`) only with `run_in_background: true`; in the foreground the call blocks until its 2-minute timeout. Playwright with a `webServer` in its config starts the app itself.
 
 ## Test style (you and your workers)
 
