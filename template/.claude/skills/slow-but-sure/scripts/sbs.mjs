@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// simple-workflow (sw): ticket board, epic folders and merge tool. Zero dependencies.
-// Usage: node .claude/skills/simple-workflow/scripts/sw.mjs <command> ...   (no args = help)
+// slow-but-sure (sbs): ticket board, epic folders and merge tool. Zero dependencies.
+// Usage: node .claude/skills/slow-but-sure/scripts/sbs.mjs <command> ...   (no args = help)
 //
 // lib/constants.mjs   statuses, roles, default config and models
 // lib/util.mjs        die, time, slug, JSON helpers
@@ -20,29 +20,29 @@ import { cmdModels, cmdMode } from './commands/setup.mjs';
 
 const SHORT_FLAGS = { e: 'epic', t: 'type', n: 'note', b: 'by', l: 'level', d: 'depends', c: 'covers' };
 
-const USAGE = `sw: simple-workflow board        (sw = node .claude/skills/simple-workflow/scripts/sw.mjs)
+const USAGE = `sbs: slow-but-sure board        (sbs = node .claude/skills/slow-but-sure/scripts/sbs.mjs)
 
 Tickets
-  sw new <feat|bug|ref|init|test> "<title>" -e <epic> [-d ID,ID] [-c ID,ID] [-l level] [-b role]
-  sw start <ID> [-l level]            todo -> in-progress, assignee dev (qa for TEST)
-  sw merge <ID> [--no-checks]         worker: merge ticket/<ID> into dev, run checks, -> ready-to-review
+  sbs new <feat|bug|ref|init|test> "<title>" -e <epic> [-d ID,ID] [-c ID,ID] [-l level] [-b role]
+  sbs start <ID> [-l level]            todo -> in-progress, assignee dev (qa for TEST)
+  sbs merge <ID> [--no-checks]         worker: merge ticket/<ID> into dev, run checks, -> ready-to-review
                                       exit 2 = conflict, exit 3 = checks failed (nothing merged)
-  sw approve <ID> ["note"]            lead: ready-to-review -> ready-to-test, cleans worktree + branch
-  sw reject <ID> "<findings>"         lead: ready-to-review -> in-progress (same level, same worker)
-  sw reopen <ID> "<context summary>"  back to in-progress, level +1 (junior -> middle -> senior)
-  sw done <ID> [ID...]                lead-qa: ready-to-test -> done
-  sw note <ID> "<text>"
-  sw mv <ID> <status> [-n "note"]     manual move (PM override)
-  sw ls [status] [-e epic] [-t type]
-  sw show <ID>
-  sw clean                            remove worktrees/branches of approved tickets
+  sbs approve <ID> ["note"]            lead: ready-to-review -> ready-to-test, cleans worktree + branch
+  sbs reject <ID> "<findings>"         lead: ready-to-review -> in-progress (same level, same worker)
+  sbs reopen <ID> "<context summary>"  back to in-progress, level +1 (junior -> middle -> senior)
+  sbs done <ID> [ID...]                lead-qa: ready-to-test -> done
+  sbs note <ID> "<text>"
+  sbs mv <ID> <status> [-n "note"]     manual move (PM override)
+  sbs ls [status] [-e epic] [-t type]
+  sbs show <ID>
+  sbs clean                            remove worktrees/branches of approved tickets
 
 Epics
-  sw epic new <slug>                  create docs/epics/<YYYYMMDD>-<slug>/
-  sw epic [ls]                        list epics with ticket counts
+  sbs epic new <slug>                  create docs/epics/<YYYYMMDD>-<slug>/
+  sbs epic [ls]                        list epics with ticket counts
 
 Setup
-  sw init | sw models [--json] | sw mode <on|off|status>
+  sbs init | sbs models [--json] | sbs mode <on|off|status>
 
 -b/--by defaults to the role that normally runs the command.
 statuses: ${STATUSES.join(', ')}

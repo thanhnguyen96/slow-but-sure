@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 
 export function die(msg, code = 1) {
-  console.error(`sw: ${msg}`);
+  console.error(`sbs: ${msg}`);
   process.exit(code);
 }
 

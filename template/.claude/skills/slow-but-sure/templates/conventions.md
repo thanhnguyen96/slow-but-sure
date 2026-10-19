@@ -1,6 +1,6 @@
 # Project conventions
 
-<!-- Created by the simple-workflow PM from the existing codebase. Every dev, qa and reviewer reads this before working.
+<!-- Created by the slow-but-sure PM from the existing codebase. Every dev, qa and reviewer reads this before working.
      Keep it short and concrete: rules that someone new to the code would get wrong. Replace every <...>. -->
 
 Other docs to follow: <CONTRIBUTING.md, CLAUDE.md, ... or "none">

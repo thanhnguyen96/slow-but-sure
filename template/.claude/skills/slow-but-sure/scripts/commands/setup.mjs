@@ -28,7 +28,7 @@ function loadModels() {
 }
 
 function printModels(m) {
-  console.log(`simple-workflow models (${rel(MODELS_FILE)})`);
+  console.log(`slow-but-sure models (${rel(MODELS_FILE)})`);
   console.log(`  ${'ROLE'.padEnd(12)} ${'MODEL'.padEnd(26)} ${'EFFORT'.padEnd(26)} USED FOR`);
   for (const [name, get, use] of MODEL_ROWS) {
     const v = get(m);
@@ -54,7 +54,7 @@ export function cmdMode(pos) {
   } else if (v === 'off') {
     fs.rmSync(FLAG, { force: true });
   } else if (v !== 'status') {
-    die('usage: sw mode <on|off|status>');
+    die('usage: sbs mode <on|off|status>');
   }
-  console.log(`simple-workflow: ${fs.existsSync(FLAG) ? 'ON' : 'OFF'}`);
+  console.log(`slow-but-sure: ${fs.existsSync(FLAG) ? 'ON' : 'OFF'}`);
 }

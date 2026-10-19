@@ -122,14 +122,14 @@ export function epicLog(epic, name, header) {
 
 export const MERGES_HEADER = `# Merges
 
-Written by \`sw merge\`. One row per merge of a ticket branch into dev. Review a row with \`git show <merge>\` (or \`git diff <merge>^1 <merge>\`).
+Written by \`sbs merge\`. One row per merge of a ticket branch into dev. Review a row with \`git show <merge>\` (or \`git diff <merge>^1 <merge>\`).
 
 | Time | Ticket | Title | Branch | Branch head | Merge commit | By |
 |---|---|---|---|---|---|---|
 `;
 export const REVIEWS_HEADER = `# Reviews
 
-Written by \`sw approve\` and \`sw reject\`.
+Written by \`sbs approve\` and \`sbs reject\`.
 
 | Time | Ticket | Merge commit | Verdict | By | Note |
 |---|---|---|---|---|---|

@@ -24,7 +24,7 @@ export function cmdReject(pos, flags) {
   const t = findTicket(pos[0]);
   needStatus(t, 'ready-to-review');
   const findings = pos.slice(1).join(' ').trim();
-  if (!findings) die(`usage: sw reject ${t.id} "<findings: file:line, what is wrong, what to do>"`);
+  if (!findings) die(`usage: sbs reject ${t.id} "<findings: file:line, what is wrong, what to do>"`);
   const who = by(flags, leadOf(t.fm.type));
   lock();
   guardMain(flags);
@@ -32,14 +32,14 @@ export function cmdReject(pos, flags) {
   const log = epicLog(t.fm.epic, 'reviews.md', REVIEWS_HEADER);
   fs.appendFileSync(log, `| ${now()} | ${t.id} | ${t.fm.merge || ''} | changes requested | ${who} | ${cell(findings)} |\n`);
   commitFiles([...files, log], `board: ${t.id} review rejected`, flags);
-  console.log(`${t.id}: ready-to-review -> in-progress (level ${t.fm.level || 'junior'}). Send the findings to the same worker; it fixes on ${t.fm.branch} and runs \`sw merge ${t.id}\` again.`);
+  console.log(`${t.id}: ready-to-review -> in-progress (level ${t.fm.level || 'junior'}). Send the findings to the same worker; it fixes on ${t.fm.branch} and runs \`sbs merge ${t.id}\` again.`);
 }
 
 export function cmdReopen(pos, flags) {
   const t = findTicket(pos[0]);
-  if (t.status === 'todo') die(`${t.id} was never started; use \`sw start\``);
+  if (t.status === 'todo') die(`${t.id} was never started; use \`sbs start\``);
   const summary = pos.slice(1).join(' ').trim() || (typeof flags.note === 'string' ? flags.note : '');
-  if (!summary) die(`usage: sw reopen ${t.id} "<context summary: what was expected, what failed (test, error, file:line), what was tried>"`);
+  if (!summary) die(`usage: sbs reopen ${t.id} "<context summary: what was expected, what failed (test, error, file:line), what was tried>"`);
   const who = by(flags, leadOf(t.fm.type));
   const prev = LEVELS.includes(t.fm.level) ? t.fm.level : 'junior';
   const next = typeof flags.level === 'string' ? level(flags.level) : LEVELS[Math.min(LEVELS.indexOf(prev) + 1, LEVELS.length - 1)];
@@ -52,7 +52,7 @@ export function cmdReopen(pos, flags) {
 }
 
 export function cmdDone(pos, flags) {
-  if (!pos.length) die('usage: sw done <ID> [ID...]');
+  if (!pos.length) die('usage: sbs done <ID> [ID...]');
   const tickets = pos.map(findTicket);
   for (const t of tickets) needStatus(t, 'ready-to-test');
   const who = by(flags, 'lead-qa');

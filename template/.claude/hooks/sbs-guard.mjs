@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// PreToolUse hook (project settings, matcher Edit|Write|NotebookEdit|Bash): role limits for simple-workflow agents.
+// PreToolUse hook (project settings, matcher Edit|Write|NotebookEdit|Bash): role limits for slow-but-sure agents.
 // Only subagents carry `agent_type`; the main conversation (PM) and other agents always pass.
 //
 // File writes (Edit/Write, and shell redirects, rm, mv, cp, touch, mkdir, tee, sed -i):
 //   lead-qa, qa:  only inside `qaWritable` (tickets/config.json); never product code.
 //   lead-dev:     never inside `leadDevBlocked`; tests belong to dev and qa workers.
-//   dev:          never inside `devBlocked` (tickets/, docs/epics/, docs/conventions.md); the board changes only through `sw`.
+//   dev:          never inside `devBlocked` (tickets/, docs/epics/, docs/conventions.md); the board changes only through `sbs`.
 //   reviewer:     nothing.
 // Bash:
 //   every role:   no git push, reset --hard, branch -D, --no-verify, checkout of the release branch.
-//   sw:           each role only runs its own sw commands (init, mv, mode, epic new are the PM's).
+//   sbs:           each role only runs its own sbs commands (init, mv, mode, epic new are the PM's).
 //   lead-dev:     no Playwright / e2e command.
 //   reviewer:     read-only command allowlist.
 // A best-effort check against mistakes, not a sandbox. Exit 2 = block; stderr is shown to the agent.
@@ -22,7 +22,7 @@ const DEFAULTS = {
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
 };
-const SW_ALLOWED = {
+const SBS_ALLOWED = {
   dev: ['merge', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
   qa: ['merge', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
   reviewer: ['show', 'ls', 'list', 'epic', 'models', 'help', ''],
@@ -49,7 +49,7 @@ const commands = cfg.commands || {};
 const toolInput = input.tool_input || {};
 
 function block(msg) {
-  process.stderr.write(`simple-workflow: ${agent} ${msg}\n`);
+  process.stderr.write(`slow-but-sure: ${agent} ${msg}\n`);
   process.exit(2);
 }
 
@@ -79,7 +79,7 @@ function writeDenied(file) {
     return `may not modify tests (${file}). Blocked: ${list('leadDevBlocked').join(', ')}. Unit tests are written by dev workers, e2e tests by qa. If a test looks wrong, report it to the PM.`;
   }
   if (agent === 'dev' && matches(file, list('devBlocked'))) {
-    return `may not modify ${file}. Blocked: ${list('devBlocked').join(', ')}. The board changes only through \`sw\`; epic docs and conventions belong to the PM and leads. Report the problem instead.`;
+    return `may not modify ${file}. Blocked: ${list('devBlocked').join(', ')}. The board changes only through \`sbs\`; epic docs and conventions belong to the PM and leads. Report the problem instead.`;
   }
   if ((agent === 'qa' || agent === 'lead-qa') && !matches(file, list('qaWritable'))) {
     return `may not modify ${file}. Writable: ${list('qaWritable').join(', ')}. If product code is wrong, report it to the PM as a dev-caused failure instead of changing it.`;
@@ -192,11 +192,11 @@ for (let words of parse(String(toolInput.command || ''))) {
     if ((sub === 'checkout' || sub === 'restore') && rest.includes('--')) for (const f of rest.slice(rest.indexOf('--') + 1)) checkWrite(f);
   }
 
-  // sw: each role only its own commands
-  const swAt = rest.findIndex((w) => /(^|[\\/])sw\.mjs$/.test(w));
+  // sbs: each role only its own commands
+  const swAt = rest.findIndex((w) => /(^|[\\/])sbs\.mjs$/.test(w));
   if (base === 'node' && swAt !== -1) {
     const swSub = rest[swAt + 1] && !rest[swAt + 1].startsWith('-') ? rest[swAt + 1] : '';
-    if (!SW_ALLOWED[agent].includes(swSub)) block(`may not run \`sw ${swSub}\`. Allowed for ${agent}: ${SW_ALLOWED[agent].filter(Boolean).join(', ')}. Ask your lead or the PM.`);
+    if (!SBS_ALLOWED[agent].includes(swSub)) block(`may not run \`sbs ${swSub}\`. Allowed for ${agent}: ${SBS_ALLOWED[agent].filter(Boolean).join(', ')}. Ask your lead or the PM.`);
     if (swSub === 'epic' && rest[swAt + 2] === 'new') block('may not create epics; the PM does.');
   }
 
@@ -216,7 +216,7 @@ for (let words of parse(String(toolInput.command || ''))) {
 
   // reviewer: read-only allowlist
   if (agent === 'reviewer') {
-    if (!REVIEWER_CMDS.includes(base)) block(`is read-only; \`${base}\` is not allowed. Use git diff/show/log, sw show/ls, cat, grep, ls, node -e, or the unit test command.`);
+    if (!REVIEWER_CMDS.includes(base)) block(`is read-only; \`${base}\` is not allowed. Use git diff/show/log, sbs show/ls, cat, grep, ls, node -e, or the unit test command.`);
     if (base === 'find' && rest.some((w) => /^-(delete|exec|execdir|ok|fprint)/.test(w))) block('is read-only; find -delete/-exec is not allowed.');
     if ((base === 'npm' || base === 'npx') && !(commands.unit && line.startsWith(commands.unit)) && !/^npm (test|t|run test)\b/.test(line)) {
       block(`is read-only; only the unit command (${commands.unit || 'npm test'}) may run through npm/npx.`);

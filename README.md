@@ -1,18 +1,18 @@
-# simple-workflow
+# slow-but-sure
 
-Claude Code skill (`/simple-workflow`, alias `/sw`): ticket-driven software process.
+Claude Code skill (`/slow-but-sure`, alias `/sbs`): ticket-driven software process.
 
 - **PM**: main conversation. Grills the user, writes the epic (brief, design + mockups, system design + rough plan), coordinates.
 - **lead-dev / lead-qa**: leads (default Sonnet/xhigh). Read the epic, write the detailed plan (`dev-plan.md` / `qa-plan.md`), create tickets, dispatch workers, approve or reject merged tickets. lead-dev never edits tests or runs e2e; lead-qa never edits product code (both hook-enforced). Problems on the other side go to the PM.
-- **dev / qa**: workers, one ticket each, in their own git worktree. They merge their own branch into `dev` with `sw merge` and report the merge commit. Level per ticket: junior (Haiku/max), each reopen raises it to middle (Sonnet/xhigh), then senior (Opus/medium, cap).
+- **dev / qa**: workers, one ticket each, in their own git worktree. They merge their own branch into `dev` with `sbs merge` and report the merge commit. Level per ticket: junior (Haiku/max), each reopen raises it to middle (Sonnet/xhigh), then senior (Opus/medium, cap).
 - **reviewer**: one per round (default Opus/medium), spawned by lead-dev. Reads conventions and the whole epic once, then reviews each dev ticket as soon as it is merged. Read-only; answers APPROVE or CHANGES. Rejected tickets are fixed forward by the same worker.
-- **Models**: `.claude/simple-workflow.models.json` (created on first `/sw on`). `/sw models` shows the table. Set the PM's model and effort yourself with `/model` and `/effort`.
+- **Models**: `.claude/slow-but-sure.models.json` (created on first `/sbs on`). `/sbs models` shows the table. Set the PM's model and effort yourself with `/model` and `/effort`.
 - **Board**: `tickets/{todo,in-progress,ready-to-review,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `tickets/README.md` describes every transition.
-- **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sw`.
+- **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sbs`.
 - **Conventions**: `docs/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
-- **/sw-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
-- **Role limits** (`hooks/sw-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sw` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands). Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
-- **Git**: `ticket/<ID>` → `dev` (integration, via `sw merge`) → release branch (`releaseBranch`: `master`, or `main` if only that exists; after regression and user approval).
+- **/sbs-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
+- **Role limits** (`hooks/sbs-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; reviewer read-only (allowlisted commands). Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
+- **Git**: `ticket/<ID>` → `dev` (integration, via `sbs merge`) → release branch (`releaseBranch`: `master`, or `main` if only that exists; after regression and user approval).
 
 ## Install
 
@@ -26,51 +26,51 @@ npx github:thanhnguyen96/slow-but-sure --force    # upgrade: overwrite the skill
 
 From a clone: `node install.mjs [path-to-project] [--force] [--no-deps]` (path defaults to the current directory).
 
-Copies `template/.claude/` (skills, agents, hooks), adds the hooks to `.claude/settings.json`, updates `.gitignore`, runs `sw init`. Files, hooks and the models file of the old `slow-but-sure` name are removed or migrated.
+Copies `template/.claude/` (skills, agents, hooks), adds the hooks to `.claude/settings.json`, updates `.gitignore`, runs `sbs init`. Files, hooks, the ON flag and the models file of the interim `simple-workflow` name are removed or migrated.
 
 Prerequisites (skipped with `--no-deps`):
 - `grill-me` + `grilling` skills from [mattpocock/skills](https://github.com/mattpocock/skills) (pinned commit) into `<project>/.claude/skills/`.
 - `opendesign` plugin from [manalkaff/opendesign](https://github.com/manalkaff/opendesign), user scope, via `claude plugin install`.
 
-Then in the project: restart Claude Code, `/sw on`. Turn off with `/sw off` (no tokens spent while off).
+Then in the project: restart Claude Code, `/sbs on`. Turn off with `/sbs off` (no tokens spent while off).
 
-## sw CLI
+## sbs CLI
 
-`sw` = `node .claude/skills/simple-workflow/scripts/sw.mjs`. No arguments prints the help.
+`sbs` = `node .claude/skills/slow-but-sure/scripts/sbs.mjs`. No arguments prints the help.
 
 ```
-sw epic new edit-todo                         # docs/epics/20261019-edit-todo/
-sw new feat "Edit todo title" -e 20261019-edit-todo
-sw start FEAT-0001                            # todo -> in-progress
-sw merge FEAT-0001                            # worker: merge into dev + checks -> ready-to-review
+sbs epic new edit-todo                         # docs/epics/20261019-edit-todo/
+sbs new feat "Edit todo title" -e 20261019-edit-todo
+sbs start FEAT-0001                            # todo -> in-progress
+sbs merge FEAT-0001                            # worker: merge into dev + checks -> ready-to-review
                                               #   exit 2 conflict, exit 3 checks failed, dev unchanged
-sw approve FEAT-0001                          # -> ready-to-test, removes worktree + branch
-sw reject FEAT-0001 "store.js:35 not trimmed" # -> in-progress, same worker fixes and merges again
-sw reopen FEAT-0001 "AC2 failed: ..."         # -> in-progress, level +1
-sw done FEAT-0001 TEST-0001                   # after regression
-sw ls [status] [-e epic]   sw show FEAT-0001   sw epic   sw clean   sw models
+sbs approve FEAT-0001                          # -> ready-to-test, removes worktree + branch
+sbs reject FEAT-0001 "store.js:35 not trimmed" # -> in-progress, same worker fixes and merges again
+sbs reopen FEAT-0001 "AC2 failed: ..."         # -> in-progress, level +1
+sbs done FEAT-0001 TEST-0001                   # after regression
+sbs ls [status] [-e epic]   sbs show FEAT-0001   sbs epic   sbs clean   sbs models
 ```
 
-Board changes are commits on `dev` in the main checkout; `sw` finds the main checkout from any worktree. One writer at a time (lock in the git dir).
+Board changes are commits on `dev` in the main checkout; `sbs` finds the main checkout from any worktree. One writer at a time (lock in the git dir).
 
 ## Layout
 
 ```
 install.mjs
 template/.claude/
-  skills/simple-workflow/SKILL.md                 PM process
-  skills/simple-workflow/scripts/sw.mjs           sw CLI entry: help, arg parsing, command table
-  skills/simple-workflow/scripts/lib/             constants, util, repo (git, lock, commits), tickets (files, epic logs)
-  skills/simple-workflow/scripts/commands/        board (init/new/start/note/mv/ls/show/clean), merge,
+  skills/slow-but-sure/SKILL.md                 PM process
+  skills/slow-but-sure/scripts/sbs.mjs           sbs CLI entry: help, arg parsing, command table
+  skills/slow-but-sure/scripts/lib/             constants, util, repo (git, lock, commits), tickets (files, epic logs)
+  skills/slow-but-sure/scripts/commands/        board (init/new/start/note/mv/ls/show/clean), merge,
                                                   review (approve/reject/reopen/done), epic, setup (models/mode)
-  skills/simple-workflow/scripts/context.mjs      used by /sw-context
-  skills/simple-workflow/templates/conventions.md starting point for docs/conventions.md
-  skills/simple-workflow/templates/tickets-README.md   copied to tickets/README.md by sw init
-  skills/sw/SKILL.md                              /sw alias
-  skills/sw-context/SKILL.md                      /sw-context
+  skills/slow-but-sure/scripts/context.mjs      used by /sbs-context
+  skills/slow-but-sure/templates/conventions.md starting point for docs/conventions.md
+  skills/slow-but-sure/templates/tickets-README.md   copied to tickets/README.md by sbs init
+  skills/sbs/SKILL.md                              /sbs alias
+  skills/sbs-context/SKILL.md                      /sbs-context
   agents/{lead-dev,dev,reviewer,lead-qa,qa}.md
-  hooks/sw-reminder.mjs                           UserPromptSubmit, only when ON
-  hooks/sw-guard.mjs                              PreToolUse (Edit|Write|NotebookEdit|Bash): role limits, subagents only
+  hooks/sbs-reminder.mjs                           UserPromptSubmit, only when ON
+  hooks/sbs-guard.mjs                              PreToolUse (Edit|Write|NotebookEdit|Bash): role limits, subagents only
 ```
 
 Requires Claude Code with nested subagents (default depth 3) and Node ≥ 18.

@@ -46,9 +46,9 @@ export function cmdNew(pos, flags) {
   if (!TYPES.includes(type)) die(`type must be one of ${TYPES.map((t) => t.toLowerCase()).join('|')}`);
   if (!title) die('title required');
   if (type === 'TEST' && typeof flags.covers !== 'string') die('TEST tickets need -c <ID[,ID]> (the dev tickets they cover)');
-  if (!fs.existsSync(TICKETS)) die('no tickets/ here; run `sw init` first');
+  if (!fs.existsSync(TICKETS)) die('no tickets/ here; run `sbs init` first');
   const epic = typeof flags.epic === 'string' ? flags.epic : '';
-  if (epic && !fs.existsSync(path.join(EPICS, epic))) die(`epic folder docs/epics/${epic}/ does not exist (see \`sw epic\`)`);
+  if (epic && !fs.existsSync(path.join(EPICS, epic))) die(`epic folder docs/epics/${epic}/ does not exist (see \`sbs epic\`)`);
   const who = by(flags, leadOf(type));
   lock();
   guardMain(flags);
@@ -91,7 +91,7 @@ export function cmdStart(pos, flags) {
 export function cmdNote(pos, flags) {
   const t = findTicket(pos[0]);
   const text = pos.slice(1).join(' ').trim();
-  if (!text) die(`usage: sw note ${t.id} "<text>"`);
+  if (!text) die(`usage: sbs note ${t.id} "<text>"`);
   const who = by(flags, leadOf(t.fm.type));
   lock();
   guardMain(flags);
@@ -104,7 +104,7 @@ export function cmdNote(pos, flags) {
 export function cmdMv(pos, flags) {
   const t = findTicket(pos[0]);
   const to = pos[1];
-  if (!STATUSES.includes(to)) die(`usage: sw mv <ID> <${STATUSES.join('|')}> [-n "note"]`);
+  if (!STATUSES.includes(to)) die(`usage: sbs mv <ID> <${STATUSES.join('|')}> [-n "note"]`);
   const who = by(flags, 'pm');
   const changes = typeof flags.level === 'string' ? { level: level(flags.level) } : {};
   lock();

@@ -12,7 +12,7 @@ function runCheck(name, cmd) {
 }
 
 export function cmdMerge(pos, flags) {
-  if (!IN_GIT) die('sw merge needs a git repository');
+  if (!IN_GIT) die('sbs merge needs a git repository');
   const id = pos[0];
   const here = path.resolve(git(['rev-parse', '--show-toplevel'], process.cwd()));
   lock();
@@ -39,10 +39,10 @@ export function cmdMerge(pos, flags) {
   if (m.status !== 0) {
     const conflicts = tryGit(['diff', '--name-only', '--diff-filter=U']) || '';
     tryGit(['merge', '--abort']);
-    console.error(`sw: CONFLICT merging ${branch} into ${dev}. Nothing was merged; ${dev} is unchanged.`);
+    console.error(`sbs: CONFLICT merging ${branch} into ${dev}. Nothing was merged; ${dev} is unchanged.`);
     if (conflicts) console.error(`conflicting files:\n${conflicts.split('\n').map((f) => `  ${f}`).join('\n')}`);
     else console.error((m.stdout + m.stderr).trim());
-    console.error(`fix: in your worktree run \`git merge ${dev}\`, resolve the conflicts, run the unit/build/lint commands, commit, then run \`sw merge ${t.id}\` again.`);
+    console.error(`fix: in your worktree run \`git merge ${dev}\`, resolve the conflicts, run the unit/build/lint commands, commit, then run \`sbs merge ${t.id}\` again.`);
     process.exit(2);
   }
 
@@ -57,8 +57,8 @@ export function cmdMerge(pos, flags) {
       if (!r.ok) {
         tryGit(['merge', '--abort']);
         const tail = r.out.trim().split('\n').slice(-40).join('\n');
-        console.error(`sw: ${name} failed on the merged result. Nothing was merged; ${dev} is unchanged.\n--- last lines of \`${cmd}\` ---\n${tail}`);
-        console.error(`fix: in your worktree run \`git merge ${dev}\`, run \`${cmd}\` until it passes, commit, then run \`sw merge ${t.id}\` again.`);
+        console.error(`sbs: ${name} failed on the merged result. Nothing was merged; ${dev} is unchanged.\n--- last lines of \`${cmd}\` ---\n${tail}`);
+        console.error(`fix: in your worktree run \`git merge ${dev}\`, run \`${cmd}\` until it passes, commit, then run \`sbs merge ${t.id}\` again.`);
         process.exit(3);
       }
     }

@@ -13,16 +13,16 @@ export const DEFAULT_CONFIG = {
   web: true,
   // setup: installs dependencies in a fresh worktree (e.g. npm ci); workers run it first.
   commands: { setup: '', unit: '', build: '', lint: '', e2e: 'npx playwright test --reporter=line', app: '' },
-  // Commands `sw merge` runs on the merged result before committing it.
+  // Commands `sbs merge` runs on the merged result before committing it.
   mergeChecks: ['unit', 'build', 'lint'],
   // lead-qa and qa may write only here (hook-enforced).
   qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'tickets/*/TEST-*.md'],
   // lead-dev may not write here (hook-enforced): tests belong to dev and qa workers.
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
-  // dev workers may not write here (hook-enforced): the board changes only through sw, docs belong to the PM and leads.
+  // dev workers may not write here (hook-enforced): the board changes only through sbs, docs belong to the PM and leads.
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
 };
-// Model + effort per subagent role and per worker level. Users edit .claude/simple-workflow.models.json.
+// Model + effort per subagent role and per worker level. Users edit .claude/slow-but-sure.models.json.
 // The PM is the main conversation: its model and effort are the user's own (/model, /effort).
 export const DEFAULT_MODELS = {
   'lead-dev': { model: 'sonnet', effort: 'xhigh' },

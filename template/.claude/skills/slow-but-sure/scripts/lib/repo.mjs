@@ -28,9 +28,9 @@ export function worktrees() {
   return list;
 }
 
-// The board always lives in the main checkout, even when sw runs inside a worker's worktree.
+// The board always lives in the main checkout, even when sbs runs inside a worker's worktree.
 function findMain() {
-  if (process.env.SW_ROOT) return path.resolve(process.env.SW_ROOT);
+  if (process.env.SBS_ROOT) return path.resolve(process.env.SBS_ROOT);
   const wts = worktrees();
   if (wts.length) return wts[0].path;
   let d = process.cwd();
@@ -47,8 +47,8 @@ export const IN_GIT = tryGit(['rev-parse', '--is-inside-work-tree']) === 'true';
 export const TICKETS = path.join(MAIN, 'tickets');
 export const EPICS = path.join(MAIN, 'docs', 'epics');
 export const COUNTERS = path.join(TICKETS, '.counters.json');
-export const FLAG = path.join(MAIN, '.claude', 'simple-workflow.on');
-export const MODELS_FILE = path.join(MAIN, '.claude', 'simple-workflow.models.json');
+export const FLAG = path.join(MAIN, '.claude', 'slow-but-sure.on');
+export const MODELS_FILE = path.join(MAIN, '.claude', 'slow-but-sure.models.json');
 export const README_TEMPLATE = new URL('../../templates/tickets-README.md', import.meta.url);
 
 export function rel(file) {
@@ -66,7 +66,7 @@ process.on('exit', () => { if (lockHeld) fs.rmSync(lockHeld, { force: true }); }
 // One writer at a time across the main checkout and every worktree.
 export function lock() {
   if (!IN_GIT) return;
-  const file = path.resolve(MAIN, git(['rev-parse', '--git-common-dir']), 'sw.lock');
+  const file = path.resolve(MAIN, git(['rev-parse', '--git-common-dir']), 'sbs.lock');
   const start = Date.now();
   let told = false;
   for (;;) {
@@ -114,7 +114,7 @@ export function cleanupTicket(branch) {
   if (!IN_GIT || !branch) return;
   const dev = config().integrationBranch;
   for (const wt of worktrees().filter((w) => w.branch === branch && w.path !== MAIN)) {
-    if (tryGit(['worktree', 'remove', wt.path]) === null) console.log(`  could not remove worktree ${wt.path} (dirty or in use); remove it later with \`sw clean\``);
+    if (tryGit(['worktree', 'remove', wt.path]) === null) console.log(`  could not remove worktree ${wt.path} (dirty or in use); remove it later with \`sbs clean\``);
     else console.log(`  removed worktree ${wt.path}`);
   }
   tryGit(['worktree', 'prune']);

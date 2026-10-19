@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Install simple-workflow into a target project, plus its prerequisites:
+// Install slow-but-sure into a target project, plus its prerequisites:
 //   - grill-me + grilling skills (mattpocock/skills, pinned commit) into <target>/.claude/skills/
 //   - opendesign Claude Code plugin (manalkaff/opendesign), user scope, via the `claude` CLI
 // Usage: node install.mjs [target-project-dir] [--force] [--no-deps]   (target defaults to the current directory)
@@ -11,15 +11,15 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE = path.join(HERE, 'template');
-const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-reminder.mjs"';
+const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"';
 // The guard lives in project settings (not agent frontmatter): frontmatter hooks need the
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
-const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-guard.mjs"';
+const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-guard.mjs"';
 const GUARD_MATCHER = 'Edit|Write|NotebookEdit|Bash';
-// Hook commands and files of the old slow-but-sure name, removed on install.
-const LEGACY_HOOK_CMDS = ['node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"'];
-const LEGACY_PATHS = ['.claude/hooks/sbs-reminder.mjs', '.claude/hooks/sbs-tester-guard.mjs', '.claude/skills/slow-but-sure', '.claude/skills/sbs-context', '.claude/slow-but-sure.on'];
-const GITIGNORE_LINES = ['.claude/simple-workflow.on', '.claude/settings.local.json', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
+// Hook commands and files of older versions (the interim simple-workflow name, the first tester guard), removed on install.
+const LEGACY_HOOK_CMDS = ['node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-reminder.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-guard.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"'];
+const LEGACY_PATHS = ['.claude/hooks/sw-reminder.mjs', '.claude/hooks/sw-guard.mjs', '.claude/hooks/sbs-tester-guard.mjs', '.claude/skills/simple-workflow', '.claude/skills/sw', '.claude/skills/sw-context'];
+const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/settings.local.json', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
 
 // Agent files from older versions (roles are now lead-dev/dev/reviewer/lead-qa/qa).
 const LEGACY_AGENTS = ['senior-dev', 'junior-dev', 'senior-tester', 'junior-tester', 'dev-lead', 'tester-lead', 'tester'];
@@ -62,7 +62,7 @@ function copyTree(src, dst) {
 function removeLegacyAgents() {
   for (const name of LEGACY_AGENTS) {
     const f = path.join(TARGET, '.claude', 'agents', `${name}.md`);
-    if (fs.existsSync(f) && fs.readFileSync(f, 'utf8').includes('slow-but-sure')) {
+    if (fs.existsSync(f) && /slow-but-sure|simple-workflow/.test(fs.readFileSync(f, 'utf8'))) {
       fs.rmSync(f);
       console.log(`  removed legacy agent ${path.relative(TARGET, f)}`);
     }
@@ -73,20 +73,24 @@ function removeLegacyAgents() {
     fs.rmSync(f, { recursive: true, force: true });
     console.log(`  removed legacy ${p}`);
   }
-  // A models file from the old name keeps the user's choices: carry them over once.
-  const oldModels = path.join(TARGET, '.claude', 'slow-but-sure.models.json');
-  const newModels = path.join(TARGET, '.claude', 'simple-workflow.models.json');
-  if (fs.existsSync(oldModels)) {
-    if (!fs.existsSync(newModels)) {
-      try {
-        const m = JSON.parse(fs.readFileSync(oldModels, 'utf8'));
-        const out = { 'lead-dev': m['dev-lead'], 'lead-qa': m['tester-lead'], levels: m.levels };
-        fs.writeFileSync(newModels, JSON.stringify(out, null, 2) + '\n');
-        console.log('  migrated .claude/slow-but-sure.models.json -> simple-workflow.models.json');
-      } catch {}
-    }
-    fs.rmSync(oldModels);
+  // The interim simple-workflow name: carry the ON flag and the models file over once.
+  const claudeDir = path.join(TARGET, '.claude');
+  for (const [from, to] of [['simple-workflow.on', 'slow-but-sure.on'], ['simple-workflow.models.json', 'slow-but-sure.models.json']]) {
+    const src = path.join(claudeDir, from);
+    if (!fs.existsSync(src)) continue;
+    if (fs.existsSync(path.join(claudeDir, to))) fs.rmSync(src);
+    else fs.renameSync(src, path.join(claudeDir, to));
+    console.log(`  migrated .claude/${from} -> ${to}`);
   }
+  // The first slow-but-sure models file used dev-lead / tester-lead keys.
+  const models = path.join(claudeDir, 'slow-but-sure.models.json');
+  try {
+    const m = JSON.parse(fs.readFileSync(models, 'utf8'));
+    if (m['dev-lead'] || m['tester-lead']) {
+      fs.writeFileSync(models, JSON.stringify({ 'lead-dev': m['dev-lead'], 'lead-qa': m['tester-lead'], levels: m.levels }, null, 2) + '\n');
+      console.log('  migrated .claude/slow-but-sure.models.json keys (dev-lead, tester-lead -> lead-dev, lead-qa)');
+    }
+  } catch {}
 }
 
 function mergeSettings() {
@@ -190,7 +194,7 @@ function installOpendesign() {
   return true;
 }
 
-console.log(`Installing simple-workflow into ${TARGET}`);
+console.log(`Installing slow-but-sure into ${TARGET}`);
 copyTree(TEMPLATE, TARGET);
 removeLegacyAgents();
 mergeSettings();
@@ -202,12 +206,12 @@ if (noDeps) {
   await installGrillSkills();
   installOpendesign();
 }
-execFileSync(process.execPath, [path.join(TARGET, '.claude/skills/simple-workflow/scripts/sw.mjs'), 'init'], {
-  cwd: TARGET, stdio: 'inherit', env: { ...process.env, SW_ROOT: TARGET },
+execFileSync(process.execPath, [path.join(TARGET, '.claude/skills/slow-but-sure/scripts/sbs.mjs'), 'init'], {
+  cwd: TARGET, stdio: 'inherit', env: { ...process.env, SBS_ROOT: TARGET },
 });
 console.log(`
 Done. Next:
   1. Review tickets/config.json (commands, integration branch).
   2. Commit the new files; create branch 'dev' if you don't have one.
-  3. Restart Claude Code in the project, then: /sw on   (alias of /simple-workflow)
-     (creates .claude/simple-workflow.models.json: model + effort per role/level; /sw models to view)`);
+  3. Restart Claude Code in the project, then: /sbs on   (alias of /slow-but-sure)
+     (creates .claude/slow-but-sure.models.json: model + effort per role/level; /sbs models to view)`);

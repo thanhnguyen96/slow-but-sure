@@ -1,4 +1,4 @@
-// Epic folders: sw epic new <slug> | sw epic ls.
+// Epic folders: sbs epic new <slug> | sbs epic ls.
 import fs from 'node:fs';
 import path from 'node:path';
 import { STATUSES } from '../lib/constants.mjs';
@@ -16,7 +16,7 @@ export function cmdEpic(pos) {
   const sub = pos[0] || 'ls';
   if (sub === 'new') {
     const slug = slugify(pos.slice(1).join(' '));
-    if (!pos[1]) die('usage: sw epic new <slug>');
+    if (!pos[1]) die('usage: sbs epic new <slug>');
     const name = `${today()}-${slug}`;
     const dir = path.join(EPICS, name);
     if (fs.existsSync(dir)) die(`docs/epics/${name}/ already exists`);
@@ -26,7 +26,7 @@ export function cmdEpic(pos) {
     console.log(`epic name: ${name}`);
     return;
   }
-  if (sub !== 'ls') die('usage: sw epic new <slug> | sw epic ls');
+  if (sub !== 'ls') die('usage: sbs epic new <slug> | sbs epic ls');
   if (!fs.existsSync(EPICS)) return console.log('(no epics)');
   const tickets = allTickets().map((t) => ({ ...parseTicket(t.file).fm, status: t.status }));
   const names = fs.readdirSync(EPICS, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
