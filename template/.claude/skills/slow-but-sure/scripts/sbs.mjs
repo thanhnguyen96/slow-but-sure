@@ -28,7 +28,7 @@ Tickets
   sbs merge <ID> [--no-checks]         worker: merge ticket/<ID> into dev, run checks, -> ready-to-review
                                       exit 2 = conflict, exit 3 = checks failed (nothing merged)
   sbs approve <ID> ["note"]            lead: ready-to-review -> ready-to-test, cleans worktree + branch
-  sbs reject <ID> "<findings>"         lead: ready-to-review -> in-progress (same level, same worker)
+  sbs reject <ID> "<findings>"         lead: ready-to-review -> in-progress (same level; frees the branch for a new worker)
   sbs reopen <ID> "<context summary>"  back to in-progress, level +1 (junior -> middle -> senior)
   sbs done <ID> [ID...]                lead-qa: ready-to-test -> done
   sbs note <ID> "<text>"

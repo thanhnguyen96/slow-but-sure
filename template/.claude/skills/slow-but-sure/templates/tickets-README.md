@@ -45,7 +45,7 @@ todo ──> in-progress ──> ready-to-review ──> ready-to-test ──> d
 | `sbs start <ID>` | lead-dev | `todo` → `in-progress` | A dev worker is spawned in its own worktree on `ticket/<ID>`. |
 | `sbs merge <ID>` | dev | `in-progress` → `ready-to-review` | Merges `ticket/<ID>` into `dev` (`--no-ff`), runs `mergeChecks` on the result, commits, logs to `merges.md`. Conflict: exit 2, red checks: exit 3; in both cases nothing is merged and `dev` is unchanged. |
 | `sbs approve <ID>` | lead-dev, on the reviewer's APPROVE | `ready-to-review` → `ready-to-test` | Logs to `reviews.md`, removes the worktree and the merged branch. |
-| `sbs reject <ID> "<findings>"` | lead-dev, on the reviewer's CHANGES | `ready-to-review` → `in-progress` | Same worker, same level. It fixes on its branch and runs `sbs merge` again (fix forward: the first merge stays in `dev`). |
+| `sbs reject <ID> "<findings>"` | lead-dev, on the reviewer's CHANGES | `ready-to-review` → `in-progress` | Same level; frees the branch. A new worker switches to the branch, fixes and runs `sbs merge` again (fix forward: the first merge stays in `dev`). |
 | `sbs done <ID...>` | lead-qa | `ready-to-test` → `done` | The full e2e suite passed. |
 | `sbs reopen <ID> "<summary>"` | lead-dev | any started → `in-progress` | Rejected twice, worker failed twice, or the PM sent it back. Level goes up. |
 

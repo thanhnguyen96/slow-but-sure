@@ -79,5 +79,5 @@ export function cmdMerge(pos, flags) {
   if (flags['no-checks']) console.log('WARNING: --no-checks: the merged result was not checked.');
   else if (skipped.length) console.log(`WARNING: no command for ${skipped.join(', ')} in tickets/config.json; those checks did not run. Tell your lead.`);
   console.log(`${t.id}: merged ${branch}@${head} into ${dev} as ${merge}; status ready-to-review.`);
-  console.log(`report to your lead: "${t.id} merged as ${merge}". Keep your worktree until the review is approved.`);
+  console.log(`report to your lead: "${t.id} merged as ${merge}". Then end with your final report.`);
 }

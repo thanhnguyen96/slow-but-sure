@@ -18,7 +18,7 @@ import path from 'node:path';
 
 const ROLES = ['lead-dev', 'dev', 'lead-qa', 'qa', 'reviewer'];
 const DEFAULTS = {
-  qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'tickets/*/TEST-*.md'],
+  qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'docs/epics/*/screenshots/**', 'tickets/*/TEST-*.md'],
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
 };

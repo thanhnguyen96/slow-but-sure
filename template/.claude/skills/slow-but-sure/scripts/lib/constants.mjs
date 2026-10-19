@@ -16,7 +16,7 @@ export const DEFAULT_CONFIG = {
   // Commands `sbs merge` runs on the merged result before committing it.
   mergeChecks: ['unit', 'build', 'lint'],
   // lead-qa and qa may write only here (hook-enforced).
-  qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'tickets/*/TEST-*.md'],
+  qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'docs/epics/*/screenshots/**', 'tickets/*/TEST-*.md'],
   // lead-dev may not write here (hook-enforced): tests belong to dev and qa workers.
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   // dev workers may not write here (hook-enforced): the board changes only through sbs, docs belong to the PM and leads.
@@ -37,12 +37,13 @@ export const DEFAULT_MODELS = {
 export const MODEL_ROWS = [
   ['lead-dev', (m) => m['lead-dev'], 'dev plan, dev tickets, review decisions'],
   ['lead-qa', (m) => m['lead-qa'], 'qa plan, TEST tickets, test review, regression'],
-  ['reviewer', (m) => m.reviewer, 'reviews merged dev tickets, one per round'],
+  ['reviewer', (m) => m.reviewer, 'reviews each batch of merged dev tickets'],
   ['junior', (m) => m.levels.junior, 'dev/qa workers, default level'],
   ['middle', (m) => m.levels.middle, 'workers on a ticket reopened once'],
   ['senior', (m) => m.levels.senior, 'workers on a ticket reopened 2+ times (cap)'],
 ];
 export const MODEL_NOTES = { haiku: 'fastest, cheapest', sonnet: 'balanced', opus: 'strongest reasoning', inherit: 'same as caller' };
 export const EFFORT_NOTES = { low: 'quick', medium: 'balanced', high: 'careful', xhigh: 'very careful', max: 'deepest, slowest' };
+export const DIRTY_WAIT_S = 120;
 export const LOCK_WAIT_MS = 15 * 60 * 1000;
 export const LOCK_STALE_MS = 30 * 60 * 1000;

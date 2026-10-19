@@ -1,6 +1,6 @@
 ---
 name: slow-but-sure
-description: Ticket-driven software process (alias /sbs) with a PM (main conversation), lead-dev / lead-qa, dev / qa workers (junior/middle/senior levels), a reviewer per round, a tickets/ board, per-ticket worktrees, self-merge into dev and Playwright regression. Use when the user runs /slow-but-sure or /sbs, says the process is on, or the slow-but-sure reminder hook fires.
+description: Ticket-driven software process (alias /sbs) with a PM (main conversation), lead-dev / lead-qa, dev / qa workers (junior/middle/senior levels), a reviewer per batch of merged tickets, a tickets/ board, per-ticket worktrees, self-merge into dev and Playwright regression. Use when the user runs /slow-but-sure or /sbs, says the process is on, or the slow-but-sure reminder hook fires.
 argument-hint: "[on|off|status|board|models]"
 ---
 
@@ -64,6 +64,8 @@ docs/epics/<YYYYMMDD>-<slug>/  one epic per finished conversation with the user 
   brief.md                     PM: decisions from grilling
   design.md                    PM: pages, elements, data-testid
   mockups/                     PM: final mockups
+  screenshots/                 lead-qa: the app after regression, one per page/state of design.md
+  trace.md                     PM: AC → ticket → test → result, before Gate 3
   plan.md                      PM: system design + rough implementation plan
   dev-plan.md                  lead-dev: tickets, rounds, interfaces between tickets
   qa-plan.md                   lead-qa: e2e scenarios
@@ -89,7 +91,7 @@ Prefixes: `FEAT`, `BUG`, `REF`, `INIT`, `TEST` (`-c` lists the dev tickets it co
 - release branch (`releaseBranch` in `tickets/config.json`: `master`, or `main` if only that exists): delivered code; changes only at Gate 3. Below it is called `<release>`.
 - `dev`: integration branch. Epics, tickets and merged work live here. The main checkout stays on `dev`.
 - `ticket/<ID>`: one branch per ticket, in the worker's worktree. The worker merges it into `dev` with `sbs merge`: `--no-ff`, checks on the merged result, aborted with nothing changed on a conflict (exit 2) or red checks (exit 3). The worker then fixes it in its worktree (`git merge dev`) and retries. One merge at a time (lock).
-- A rejected review is fixed forward: the same worker fixes on its branch and merges again.
+- A rejected review is fixed forward: a new worker at the same level switches to the same branch, fixes and merges again.
 
 ## Step 0: triage (every user message)
 
@@ -151,14 +153,14 @@ Write `plan.md`:
 
 Launch both leads in one message, `run_in_background: true`, with `model`/`effort` from `sbs models --json`. The prompt is just the epic and conventions; add a `Note:` only for something that is not in the epic docs:
 
-- **lead-dev:** `Epic: <epic>. Conventions: docs/conventions.md. Write dev-plan.md, create dev tickets, run the rounds (workers merge, a reviewer per round reviews) until every dev ticket is in ready-to-test. Report back.`
+- **lead-dev:** `Epic: <epic>. Conventions: docs/conventions.md. Write dev-plan.md, create dev tickets, run the rounds (workers merge, a reviewer reviews each batch) until every dev ticket is in ready-to-test. Report back.`
 - **lead-qa:** `Epic: <epic>. Conventions: docs/conventions.md. Authoring mode: write qa-plan.md, create TEST tickets covering the dev tickets, have qa workers write and merge the Playwright tests, review them, report back. Do not run regression yet.`
 
-While they work, answer the user and relay the leads' questions. If a lead returns a question, decide it or ask the user, then resume that lead with SendMessage. When one lead reports a problem in the other side's work (lead-dev: a test looks wrong; lead-qa: the app looks wrong), you route it: `sbs note` with the evidence and a message to the right lead, or a BUG ticket.
+Each lead runs its whole part in one turn and returns one report. Wait for the completion notifications; don't poll the board or files. While they work, answer the user. If a lead returns a question, decide it or ask the user, then launch that lead again with the answer in a `Note:` line (it picks up from the board). When one lead reports a problem in the other side's work (lead-dev: a test looks wrong; lead-qa: the app looks wrong), you route it: `sbs note` with the evidence and a new run of the right lead, or a BUG ticket.
 
 ## Step 6: regression
 
-When lead-dev reports every dev ticket in ready-to-test and lead-qa reports the tests approved, launch **lead-qa** in regression mode: `Epic: <epic>. Conventions: docs/conventions.md. Regression mode.`
+When lead-dev reports every dev ticket in ready-to-test and lead-qa reports the tests approved, launch **lead-qa** in regression mode: `Epic: <epic>. Conventions: docs/conventions.md. Regression mode.` On a green suite it also saves screenshots of every page and state in `design.md` to `docs/epics/<epic>/screenshots/`.
 
 - **All pass on the first run:** lead-qa moves the TEST tickets and their dev tickets to `done`.
 - **Test-caused failure:** lead-qa reopens the owning TEST ticket (even from done), fixes it through a qa worker and reruns.
@@ -169,11 +171,13 @@ Loop until the full suite passes.
 
 ## Step 7: delivery
 
-**Gate 3:** report tickets done, tests added, the suite result (command and pass count), review findings that were fixed, known limitations.
+1. **Trace.** Write `docs/epics/<epic>/trace.md`: one row per acceptance criterion in `brief.md` with the tickets that implement it, the e2e or unit tests that prove it (`grep -rn "// Ticket:" tests/e2e` and the AC → test tables in `reviews.md`), and the regression result. A row with no test or a failing test blocks delivery: route it like a regression failure (a TEST ticket to lead-qa, or a BUG to lead-dev).
+2. **Compare with the mockups.** Put each screenshot next to its mockup. Layout, labels, states or elements that differ from the approved mockup are BUG tickets for lead-dev, unless `brief.md` or `design.md` records the change. Loop through Steps 5 and 6 for them.
+3. **Gate 3, visual like the mockup review.** Start the app (`commands.app`). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Then AskUserQuestion with "Approve" and "Adjust". "Adjust" becomes tickets (Step 0 triage) and the loop runs again. Stop the app afterwards.
 
-Before reporting, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; no server you or a subagent started may still run, and the app port (the `baseURL` in `playwright.config.*`) must be free.
+Before Gate 3, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; no server you or a subagent started may still run, and the app port (the `baseURL` in `playwright.config.*`) must be free.
 
-Ask whether to merge `dev` into `<release>`. Only after a yes: `git checkout <release> && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
+After "Approve", ask whether to merge `dev` into `<release>`. Only after a yes: `git checkout <release> && git merge --no-ff dev && git checkout dev`. Never push unless the user asks.
 
 ## PM rules
 

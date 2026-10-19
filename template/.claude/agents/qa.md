@@ -18,7 +18,7 @@ Your prompt gives the ticket ID, the epic name, your level and the branch comman
 2. The ticket: `sbs show <ID>` (scenarios, covered dev tickets, `data-testid`s).
 3. `docs/epics/<epic>/design.md` (pages, elements, `data-testid`s) and `docs/epics/<epic>/qa-plan.md`.
 
-A `REOPENED` prompt has a context summary of what failed before; read it first. A message from lead-qa with review findings: fix exactly those, then merge again.
+A `REOPENED` prompt has a context summary of what failed before; read it first. A `CHANGES REQUESTED` prompt has lead-qa's findings: switch to the existing branch, fix exactly those, then merge again.
 
 ## Rules
 
@@ -45,7 +45,7 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
    - **exit 0**: merged; note the merge commit.
    - **exit 2, conflict** or **exit 3, checks failed**: nothing was merged. In your worktree run `git merge dev`, resolve or fix, commit, and run `sbs merge <ID>` again.
    - After two failed attempts, stop and report blocked with the output.
-3. Keep your worktree until lead-qa approves.
+3. End with the final report. lead-qa spawns a new worker if the review asks for changes.
 
 ## Final report
 

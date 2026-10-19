@@ -5,7 +5,7 @@ Claude Code skill (`/slow-but-sure`, alias `/sbs`): ticket-driven software proce
 - **PM**: main conversation. Grills the user, writes the epic (brief, design + mockups, system design + rough plan), coordinates.
 - **lead-dev / lead-qa**: leads (default Sonnet/xhigh). Read the epic, write the detailed plan (`dev-plan.md` / `qa-plan.md`), create tickets, dispatch workers, approve or reject merged tickets. lead-dev never edits tests or runs e2e; lead-qa never edits product code (both hook-enforced). Problems on the other side go to the PM.
 - **dev / qa**: workers, one ticket each, in their own git worktree. They merge their own branch into `dev` with `sbs merge` and report the merge commit. Level per ticket: junior (Haiku/max), each reopen raises it to middle (Sonnet/xhigh), then senior (Opus/medium, cap).
-- **reviewer**: one per round (default Opus/medium), spawned by lead-dev. Reads conventions and the whole epic once, then reviews each dev ticket as soon as it is merged. Read-only; answers APPROVE or CHANGES. Rejected tickets are fixed forward by the same worker.
+- **reviewer**: one per batch of merged dev tickets (default Opus/medium), spawned by lead-dev. Reads conventions and the whole epic, then reviews every ticket of the batch. Read-only; answers APPROVE or CHANGES. Rejected tickets are fixed forward on the same branch by a new worker at the same level.
 - **Models**: `.claude/slow-but-sure.models.json` (created on first `/sbs on`). `/sbs models` shows the table. Set the PM's model and effort yourself with `/model` and `/effort`.
 - **Board**: `tickets/{todo,in-progress,ready-to-review,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `tickets/README.md` describes every transition.
 - **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sbs`.
@@ -45,7 +45,7 @@ sbs start FEAT-0001                            # todo -> in-progress
 sbs merge FEAT-0001                            # worker: merge into dev + checks -> ready-to-review
                                               #   exit 2 conflict, exit 3 checks failed, dev unchanged
 sbs approve FEAT-0001                          # -> ready-to-test, removes worktree + branch
-sbs reject FEAT-0001 "store.js:35 not trimmed" # -> in-progress, same worker fixes and merges again
+sbs reject FEAT-0001 "store.js:35 not trimmed" # -> in-progress, a new worker fixes the branch, merges again
 sbs reopen FEAT-0001 "AC2 failed: ..."         # -> in-progress, level +1
 sbs done FEAT-0001 TEST-0001                   # after regression
 sbs ls [status] [-e epic]   sbs show FEAT-0001   sbs epic   sbs clean   sbs models

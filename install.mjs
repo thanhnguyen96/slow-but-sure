@@ -141,7 +141,7 @@ function mergeGitignore() {
   const missing = GITIGNORE_LINES.filter((l) => !have.has(l));
   if (!missing.length) return;
   const sep = existing && !existing.endsWith('\n') ? '\n' : '';
-  fs.writeFileSync(file, `${existing}${sep}\n# simple-workflow\n${missing.join('\n')}\n`);
+  fs.writeFileSync(file, `${existing}${sep}\n# slow-but-sure\n${missing.join('\n')}\n`);
   console.log(`  .gitignore += ${missing.join(', ')}`);
 }
 

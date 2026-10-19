@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { DEFAULT_CONFIG, LOCK_WAIT_MS, LOCK_STALE_MS } from './constants.mjs';
+import { DEFAULT_CONFIG, LOCK_WAIT_MS, LOCK_STALE_MS, DIRTY_WAIT_S } from './constants.mjs';
 import { die, sleep, readJSON } from './util.mjs';
 
 export function git(args, cwd = MAIN) {
@@ -93,7 +93,13 @@ export function guardMain(flags, { clean = false } = {}) {
   if (branch !== want) die(`the main checkout (${MAIN}) is on '${branch}', not '${want}'. Board changes and merges happen on '${want}'.`);
   if (fs.existsSync(path.resolve(MAIN, git(['rev-parse', '--git-dir']), 'MERGE_HEAD'))) die('a merge is already in progress in the main checkout');
   if (clean) {
-    const dirty = git(['status', '--porcelain', '--untracked-files=no']);
+    // A lead may be between an edit and its commit: wait a little before giving up.
+    let dirty = git(['status', '--porcelain', '--untracked-files=no']);
+    for (let i = 0; dirty && i < DIRTY_WAIT_S / 5; i++) {
+      if (!i) console.log('main checkout has uncommitted changes; waiting for the lead to commit them');
+      sleep(5000);
+      dirty = git(['status', '--porcelain', '--untracked-files=no']);
+    }
     if (dirty) die(`the main checkout has uncommitted changes; the lead must commit or stash them first:\n${dirty}`);
   }
 }
@@ -107,6 +113,16 @@ export function commitFiles(files, msg, flags) {
   } catch (e) {
     die(`git commit failed: ${String(e.stderr || e.message).trim()}`);
   }
+}
+
+// Removes the worktree that has `branch` checked out but keeps the branch, so a new worker can switch to it.
+export function freeBranch(branch) {
+  if (!IN_GIT || !branch) return;
+  for (const wt of worktrees().filter((w) => w.branch === branch && w.path !== MAIN)) {
+    if (tryGit(['worktree', 'remove', wt.path]) === null) console.log(`  could not remove worktree ${wt.path} (uncommitted changes?); commit or discard them there before the next worker starts`);
+    else console.log(`  removed worktree ${wt.path} (branch ${branch} kept for the next worker)`);
+  }
+  tryGit(['worktree', 'prune']);
 }
 
 // Removes the ticket's worktree and merged branch, plus empty worktree-agent-* branches. Best effort.

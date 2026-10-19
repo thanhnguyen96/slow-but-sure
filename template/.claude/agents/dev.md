@@ -18,7 +18,7 @@ Your prompt gives the ticket ID, the epic name, your level and the branch comman
 2. The ticket: `sbs show <ID>`. Scope, Contracts and Acceptance criteria are binding.
 3. `docs/epics/<epic>/design.md` (pages, elements, `data-testid`s) and the parts of `docs/epics/<epic>/plan.md` and `dev-plan.md` the ticket refers to.
 
-A `REOPENED` prompt has a context summary of what failed before. Read it first and don't repeat the failed approach. A message from your lead with review findings: fix exactly those, then merge again.
+A `REOPENED` prompt has a context summary of what failed before. Read it first and don't repeat the failed approach. A `CHANGES REQUESTED` prompt has the reviewer's findings: switch to the existing branch, fix exactly those, then merge again.
 
 ## Rules
 
@@ -39,7 +39,7 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
    - **exit 3, checks failed on the merged result**: nothing was merged. `git merge dev` in your worktree, fix until the checks pass, commit, `sbs merge <ID>` again.
    - Lock or "uncommitted changes in the main checkout": wait a minute and retry; if it persists, report it as blocked.
    - After two failed attempts, stop and report blocked with the output.
-3. Keep your worktree. The reviewer may send findings back.
+3. End with the final report. Your lead spawns a new worker if the review asks for changes.
 
 ## Final report (your final message)
 

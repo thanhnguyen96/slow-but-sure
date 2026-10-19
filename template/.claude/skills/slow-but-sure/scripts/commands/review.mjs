@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { LEVELS } from '../lib/constants.mjs';
 import { die, now, cell } from '../lib/util.mjs';
-import { lock, guardMain, commitFiles, cleanupTicket } from '../lib/repo.mjs';
+import { lock, guardMain, commitFiles, cleanupTicket, freeBranch } from '../lib/repo.mjs';
 import { level, leadOf, workerOf, by, findTicket, moveTicket, needStatus, epicLog, REVIEWS_HEADER } from '../lib/tickets.mjs';
 
 export function cmdApprove(pos, flags) {
@@ -32,7 +32,8 @@ export function cmdReject(pos, flags) {
   const log = epicLog(t.fm.epic, 'reviews.md', REVIEWS_HEADER);
   fs.appendFileSync(log, `| ${now()} | ${t.id} | ${t.fm.merge || ''} | changes requested | ${who} | ${cell(findings)} |\n`);
   commitFiles([...files, log], `board: ${t.id} review rejected`, flags);
-  console.log(`${t.id}: ready-to-review -> in-progress (level ${t.fm.level || 'junior'}). Send the findings to the same worker; it fixes on ${t.fm.branch} and runs \`sbs merge ${t.id}\` again.`);
+  console.log(`${t.id}: ready-to-review -> in-progress (level ${t.fm.level || 'junior'}). Spawn a worker at the same level with the findings; it switches to ${t.fm.branch}, fixes and runs \`sbs merge ${t.id}\` again.`);
+  freeBranch(t.fm.branch);
 }
 
 export function cmdReopen(pos, flags) {
@@ -49,6 +50,7 @@ export function cmdReopen(pos, flags) {
   const files = moveTicket(t, 'in-progress', `${t.status} -> in-progress by ${who} (reopened, level ${prev} -> ${next}): ${summary}`, { level: next, assignee });
   commitFiles(files, `board: ${t.id} reopened`, flags);
   console.log(`${t.id}: ${t.status} -> in-progress (reopened)  level: ${prev} -> ${next}  branch: ${t.fm.branch}`);
+  freeBranch(t.fm.branch);
 }
 
 export function cmdDone(pos, flags) {
