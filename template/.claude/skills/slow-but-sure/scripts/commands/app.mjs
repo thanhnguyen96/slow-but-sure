@@ -1,4 +1,5 @@
-// The app server and the e2e suite: start/stop in the background with a recorded pid, setup/teardown around e2e.
+// The app server and the e2e suite: start/stop in the background with a recorded pid, setup/teardown around e2e,
+// and screenshots of the app or the mockups.
 // Agents never start servers or Playwright themselves (a foreground server blocks the shell until its timeout,
 // a background one is easily left running), so every start goes through here and every stop frees the port.
 import fs from 'node:fs';
@@ -6,8 +7,10 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { die, readJSON, writeJSON } from '../lib/util.mjs';
-import { MAIN, IN_GIT, git, config, lock } from '../lib/repo.mjs';
+import { MAIN, IN_GIT, EPICS, git, config, lock, rel } from '../lib/repo.mjs';
 
 const START_WAIT_S = 60;
 const E2E_TIMEOUT_S = 540; // under the 10-minute Bash tool limit, so the teardown always runs
@@ -153,4 +156,67 @@ export async function cmdE2e() {
     console.log(await stopApp(port) ? `teardown: app stopped, port ${port} free` : `teardown: port ${port} still in use by pid ${portOwners(port).join(', ')}`);
   }
   process.exitCode = code;
+}
+
+// Playwright's chromium from the project's own dependencies.
+async function chromium(dir) {
+  const req = createRequire(path.join(dir, 'package.json'));
+  for (const name of ['@playwright/test', 'playwright']) {
+    let file;
+    try { file = req.resolve(name); } catch { continue; }
+    const mod = await import(pathToFileURL(file).href);
+    return mod.chromium || mod.default.chromium;
+  }
+  die('Playwright is not installed in this project (npm i -D @playwright/test, then npx playwright install chromium)');
+}
+
+const VIEWPORT = { width: 1280, height: 720 };
+
+// Screenshots of the app (one PNG per page/state) or of the epic's HTML mockups, at the same viewport.
+export async function cmdShot(pos, flags) {
+  const usage = 'usage: sbs shot -e <epic> <name> [--path /route] | sbs shot -e <epic> --setup <file.mjs> | sbs shot -e <epic> --mockups';
+  if (typeof flags.epic !== 'string') die(usage);
+  const epicDir = path.join(EPICS, flags.epic);
+  if (!fs.existsSync(epicDir)) die(`no epic folder ${rel(epicDir)}`);
+  const dir = here();
+  const browser = await (await chromium(dir)).launch();
+  try {
+    const page = await browser.newPage({ viewport: VIEWPORT });
+    if (flags.mockups) {
+      const mdir = path.join(epicDir, 'mockups');
+      const files = fs.existsSync(mdir) ? fs.readdirSync(mdir).filter((n) => /\.html?$/i.test(n)) : [];
+      if (!files.length) die(`no HTML mockups in ${rel(mdir)}`);
+      for (const f of files) {
+        const out = path.join(mdir, f.replace(/\.html?$/i, '.png'));
+        await page.goto(pathToFileURL(path.join(mdir, f)).href);
+        await page.screenshot({ path: out, fullPage: true });
+        console.log(`  ${rel(out)}`);
+      }
+      return;
+    }
+    const setup = typeof flags.setup === 'string' ? path.resolve(flags.setup) : null;
+    if (!setup && !pos[0]) die(usage);
+    const port = appPort(dir);
+    const app = await startApp(dir, port);
+    const baseURL = `http://localhost:${port}`;
+    const outDir = path.join(epicDir, 'screenshots');
+    fs.mkdirSync(outDir, { recursive: true });
+    const shot = async (name) => {
+      const out = path.join(outDir, `${name}.png`);
+      await page.screenshot({ path: out, fullPage: true });
+      console.log(`  ${rel(out)}`);
+    };
+    try {
+      if (setup) await (await import(pathToFileURL(setup).href)).default({ page, baseURL, shot });
+      else {
+        await page.goto(baseURL + (typeof flags.path === 'string' ? flags.path : '/'));
+        await page.waitForLoadState('networkidle');
+        await shot(pos[0]);
+      }
+    } finally {
+      if (!app.reused) await stopApp(port);
+    }
+  } finally {
+    await browser.close();
+  }
 }

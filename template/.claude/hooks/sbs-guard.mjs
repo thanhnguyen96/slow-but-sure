@@ -11,7 +11,7 @@
 //   every role:   no git push, reset --hard, branch -D, --no-verify, checkout of the release branch.
 //   sbs:           each role only runs its own sbs commands (init, mv, mode, epic new are the PM's).
 //   lead-dev:     no Playwright / e2e command.
-//   workers, leads: no app server or Playwright test run outside `sbs app` / `sbs e2e` (they start, wait and stop it);
+//   workers, leads: no app server or Playwright test run outside `sbs app` / `sbs e2e` / `sbs shot` (they start, wait and stop it);
 //                 `sbs` never in the background (it returns on its own; a background run invites polling).
 //   reviewer:     read-only command allowlist.
 // A best-effort check against mistakes, not a sandbox. Exit 2 = block; stderr is shown to the agent.
@@ -26,10 +26,10 @@ const DEFAULTS = {
 };
 const SBS_ALLOWED = {
   dev: ['merge', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
-  qa: ['merge', 'e2e', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
+  qa: ['merge', 'e2e', 'app', 'shot', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
   reviewer: ['show', 'ls', 'list', 'epic', 'models', 'help', ''],
   'lead-dev': ['new', 'start', 'approve', 'reject', 'reopen', 'note', 'app', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
-  'lead-qa': ['new', 'start', 'approve', 'reject', 'reopen', 'done', 'note', 'e2e', 'app', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
+  'lead-qa': ['new', 'start', 'approve', 'reject', 'reopen', 'done', 'note', 'e2e', 'app', 'shot', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
 };
 const REVIEWER_CMDS = ['cd', 'pwd', 'ls', 'cat', 'head', 'tail', 'wc', 'grep', 'rg', 'find', 'diff', 'echo', 'printf',
   'sort', 'uniq', 'cut', 'tr', 'awk', 'sed', 'git', 'node', 'npm', 'npx', 'true', 'test', '['];
@@ -102,7 +102,7 @@ if (input.tool_name !== 'Bash') {
 // Splits a command line into segments (on ; && || | & newlines) of unquoted words; $(...) and backticks become segments too.
 function parse(cmd) {
   const segs = [];
-  let words = [], word = '', quoted = false, q = null;
+  let words = [], word = '', quoted = false, q = null, heredocs = [];
   const endWord = () => { if (word || quoted) words.push(word); word = ''; quoted = false; };
   const endSeg = () => { endWord(); if (words.length) segs.push(words); words = []; };
   for (let i = 0; i < cmd.length; i++) {
@@ -128,15 +128,38 @@ function parse(cmd) {
       i = j;
       continue;
     }
+    if (c === '\n' && heredocs.length) {
+      // heredoc bodies are data (a script, a file's content), not commands: skip to each closing delimiter line
+      endSeg();
+      for (const end of heredocs) {
+        for (;;) {
+          const eol = cmd.indexOf('\n', i + 1);
+          const lineText = cmd.slice(i + 1, eol === -1 ? cmd.length : eol);
+          i = eol === -1 ? cmd.length : eol;
+          if (lineText.replace(/^\t+/, '').replace(/\r$/, '') === end || eol === -1) break;
+        }
+      }
+      heredocs = [];
+      continue;
+    }
     if (c === ';' || c === '\n' || c === '|' || c === '&' && cmd[i + 1] !== '>' && cmd[i - 1] !== '>') {
       if ((c === '|' || c === '&') && cmd[i + 1] === c) i++;
       endSeg();
       continue;
     }
+    if (c === '<' && cmd[i + 1] === '<' && cmd[i + 2] !== '<') {
+      endWord();
+      const m = cmd.slice(i + 2).match(/^-?\s*(?:'([^']*)'|"([^"]*)"|\\?([^\s;|&<>()]+))/);
+      if (m) {
+        heredocs.push(m[1] ?? m[2] ?? m[3]);
+        i += 1 + m[0].length;
+        continue;
+      }
+    }
     if (c === '>' || c === '<') {
       endWord();
       let op = c;
-      while (cmd[i + 1] === '>' || cmd[i + 1] === '&') op += cmd[++i];
+      while (cmd[i + 1] === '>' || cmd[i + 1] === '&' || c === '<' && cmd[i + 1] === '<') op += cmd[++i];
       words.push(op);
       continue;
     }
@@ -165,7 +188,7 @@ for (let words of parse(String(toolInput.command || ''))) {
     if (/^\d*>{1,2}&?$|^&>{1,2}$/.test(w)) {
       if (!w.endsWith('&')) checkWrite(words[i + 1]);
       i++;
-    } else if (w === '<' || w === '<<') i++;
+    } else if (/^<{1,3}$/.test(w)) i++;
     else plain.push(w);
   }
   words = plain;
@@ -211,8 +234,10 @@ for (let words of parse(String(toolInput.command || ''))) {
     const script = base === 'node' && rest.find((w) => !w.startsWith('-'));
     const nodeServer = script && /(^|[\\/])(server|app|main)\.[cm]?[jt]s$/i.test(script) && repoRel(path.resolve(cwd, fromBash(script))) !== null;
     if (appCmd || npmServe || devServer || nodeServer) block('may not start the app directly (it blocks the shell or is left running). Use `sbs app start` (background, recorded pid) and `sbs app stop`; for tests, `sbs e2e` starts and stops it itself.');
-    const pwTest = /\bplaywright\b/.test(line) && /\btest\b/.test(line) || commands.e2e && line.includes(commands.e2e);
-    if (pwTest && agent !== 'lead-dev') block('may not run Playwright tests directly. Use `sbs e2e` (whole suite) or `sbs e2e <spec file> -g "name"` (a subset); it starts the app if needed, runs the tests and always stops the app.');
+    // `playwright test` (any launcher: npx, pnpm exec, node_modules/.bin), not `--list`, which only lists the tests
+    const pwAt = words.findIndex((w) => /(^|[\\/])playwright(\.cmd)?$/i.test(w));
+    const pwTest = (pwAt !== -1 && words[pwAt + 1] === 'test' || commands.e2e && line.includes(commands.e2e)) && !words.includes('--list');
+    if (pwTest && agent !== 'lead-dev') block('may not run Playwright tests directly. Use `sbs e2e` (whole suite) or `sbs e2e <spec file> -g "name"` (a subset); it starts the app if needed, runs the tests and always stops the app. `npx playwright test --list` is allowed. Screenshots: `sbs shot`.');
   }
 
   // e2e belongs to lead-qa and qa

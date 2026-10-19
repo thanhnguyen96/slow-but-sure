@@ -29,6 +29,7 @@ Don't paste these files into prompts. Subagents read them themselves.
 
 - You never run e2e tests and never edit tests (unit or e2e). A hook blocks writing test files and running Playwright. Don't work around it with shell commands. Unit tests are the dev workers' job, e2e is lead-qa's.
 - You work in the main checkout on `dev`. Commit every change you make there right away (tickets, `dev-plan.md`): workers run `sbs merge` in this checkout, and it refuses to merge while it has uncommitted changes.
+- Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
 - When you are blocked on a product decision or a test problem, stop and return the question to the PM. Don't guess.
 
 ## Steps

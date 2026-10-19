@@ -11,14 +11,14 @@
 // commands/review.mjs approve, reject, reopen, done
 // commands/epic.mjs   epic new | ls
 // commands/setup.mjs  models, mode
-// commands/app.mjs    app start|stop|status, e2e (setup/teardown around the suite)
+// commands/app.mjs    app start|stop|status, e2e (setup/teardown around the suite), shot (screenshots)
 import { STATUSES, ROLES, LEVELS } from './lib/constants.mjs';
 import { cmdInit, cmdNew, cmdStart, cmdNote, cmdMv, cmdLs, cmdShow, cmdClean } from './commands/board.mjs';
 import { cmdMerge } from './commands/merge.mjs';
 import { cmdApprove, cmdReject, cmdReopen, cmdDone } from './commands/review.mjs';
 import { cmdEpic } from './commands/epic.mjs';
 import { cmdModels, cmdMode } from './commands/setup.mjs';
-import { cmdApp, cmdE2e } from './commands/app.mjs';
+import { cmdApp, cmdE2e, cmdShot } from './commands/app.mjs';
 
 const SHORT_FLAGS = { e: 'epic', t: 'type', n: 'note', b: 'by', l: 'level', d: 'depends', c: 'covers' };
 
@@ -33,7 +33,7 @@ Tickets
   sbs reject <ID> "<findings>"         lead: ready-to-review -> in-progress (same level; frees the branch for a new worker)
   sbs reopen <ID> "<context summary>"  back to in-progress, level +1 (junior -> middle -> senior)
   sbs done <ID> [ID...]                lead-qa: ready-to-test -> done
-  sbs note <ID> "<text>"
+  sbs note <ID> "<text>" [-b role]
   sbs mv <ID> <status> [-n "note"]     manual move (PM override)
   sbs ls [status] [-e epic] [-t type]
   sbs show <ID>
@@ -41,7 +41,12 @@ Tickets
 
 App and e2e (never start the app or Playwright yourself)
   sbs e2e [spec file | -g "name" ...]  full suite or a subset: starts the app if needed, runs it, always stops it
-  sbs app start|stop|status            app in the background for debugging, screenshots, the user's check
+  sbs app start|stop|status            app in the background for debugging and the user's check
+  sbs shot -e <epic> <name> [--path /route]   screenshot of a page to docs/epics/<epic>/screenshots/<name>.png
+  sbs shot -e <epic> --setup <file.mjs>       states that need data or clicks: the file exports
+                                      default async ({ page, baseURL, shot }) and calls await shot('<page>-<state>')
+  sbs shot -e <epic> --mockups                PNG of every mockups/*.html next to it (same 1280x720 viewport)
+                                      shot starts and stops the app itself unless it is already running
 
 Epics
   sbs epic new <slug>                  create docs/epics/<YYYYMMDD>-<slug>/
@@ -75,7 +80,7 @@ function parseArgs(argv) {
 const COMMANDS = {
   init: cmdInit, new: cmdNew, start: cmdStart, merge: cmdMerge, approve: cmdApprove, reject: cmdReject,
   reopen: cmdReopen, done: cmdDone, note: cmdNote, mv: cmdMv, ls: cmdLs, list: cmdLs, show: cmdShow,
-  clean: cmdClean, epic: cmdEpic, app: cmdApp, e2e: cmdE2e, models: cmdModels, mode: cmdMode,
+  clean: cmdClean, epic: cmdEpic, app: cmdApp, e2e: cmdE2e, shot: cmdShot, models: cmdModels, mode: cmdMode,
 };
 
 const { pos, flags } = parseArgs(process.argv.slice(2));

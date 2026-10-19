@@ -26,6 +26,7 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 - Then run `commands.setup` from `tickets/config.json` in your worktree (a new worktree has no installed dependencies). If it is empty and the project has dependencies, report that to your lead.
 - Only write inside `tests/e2e/` (and `playwright.config.*` if the ticket says so). Never modify product code: a hook blocks it; don't work around it with shell commands. Never edit `tickets/` or `docs/`. Never push. Never spawn agents.
 - If the app seems wrong, don't fix it. Report it.
+- Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
 - Run your tests with `sbs e2e <your spec file>` (add `-g "<name>"` for one test). It starts the app if needed, always stops it, and frees the port. For debugging, `sbs app start` / `sbs app stop`. A hook blocks starting the app or Playwright tests any other way, and running `sbs` in the background.
 
 ## Test style
@@ -40,7 +41,7 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 
 ## Done: merge it yourself
 
-1. `npx playwright test --list` for your files must succeed; run them too if the feature is already on `dev`. Commit with `<ID>: <summary>`.
+1. `npx playwright test --list <your spec files>` must succeed. If the feature is already on `dev` (`git merge dev` first), run your whole spec file, not one test: `sbs e2e <your spec file> --repeat-each=3`. Every run must pass; a test that passes only sometimes races the app (assert the visible result of each server action before the next). If it fails because the app is wrong, report it instead of bending the test. Commit with `<ID>: <summary>`.
 2. `sbs merge <ID>`. It merges `ticket/<ID>` into `dev`, runs the unit/build/lint checks, logs the merge and moves the ticket to ready-to-review.
    - **exit 0**: merged; note the merge commit.
    - **exit 2, conflict** or **exit 3, checks failed**: nothing was merged. In your worktree run `git merge dev`, resolve or fix, commit, and run `sbs merge <ID>` again.

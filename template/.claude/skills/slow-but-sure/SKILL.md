@@ -172,7 +172,7 @@ Loop until the full suite passes.
 ## Step 7: delivery
 
 1. **Trace.** Write `docs/epics/<epic>/trace.md`: one row per acceptance criterion in `brief.md` with the tickets that implement it, the e2e or unit tests that prove it (`grep -rn "// Ticket:" tests/e2e` and the AC → test tables in `reviews.md`), and the regression result. A row with no test or a failing test blocks delivery: route it like a regression failure (a TEST ticket to lead-qa, or a BUG to lead-dev).
-2. **Compare with the mockups.** Put each screenshot next to its mockup. Layout, labels, states or elements that differ from the approved mockup are BUG tickets for lead-dev, unless `brief.md` or `design.md` records the change. Loop through Steps 5 and 6 for them.
+2. **Compare with the mockups.** `sbs shot -e <epic> --mockups` saves a PNG of every `mockups/*.html` next to it, at the screenshots' viewport (1280x720). Put each screenshot next to its mockup PNG. Layout, labels, states or elements that differ from the approved mockup are BUG tickets for lead-dev, unless `brief.md` or `design.md` records the change. Loop through Steps 5 and 6 for them; in the rerun's prompt to lead-qa add `Note: save the screenshots again.` so they show the fix.
 3. **Gate 3, visual like the mockup review.** `sbs app start` (prints the URL). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Then AskUserQuestion with "Approve" and "Adjust". "Adjust" becomes tickets (Step 0 triage) and the loop runs again. `sbs app stop` afterwards.
 
 Before Gate 3, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; `sbs app status` must say not running (`sbs app stop` frees the port).
@@ -182,5 +182,7 @@ After "Approve", ask whether to merge `dev` into `<release>`. Only after a yes: 
 ## PM rules
 
 - Inside the ticket process, never write product code or e2e tests yourself.
+- Add `-b pm` to every `sbs` command that records an author (`new`, `note`, `start`, `mv`); without it the author defaults to the ticket's lead.
+- Follow the user's CLAUDE.md commit rules (`~/.claude/CLAUDE.md` and the project's) for your own commits; no `Co-Authored-By` trailer if they forbid it.
 - Give subagents the epic name and `docs/conventions.md`, never pasted copies of docs.
 - Keep the user informed at gates and when something is blocked. Don't narrate every subagent step.

@@ -26,6 +26,7 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 - Then run `commands.setup` from `tickets/config.json` in your worktree (a new worktree has no installed dependencies). If it is empty and the project has dependencies, report that to your lead.
 - Change only what the Scope needs. Keep the Contracts exactly as written. Never edit `tickets/`, `docs/epics/` or `docs/conventions.md`. Never push. Never spawn agents. A hook enforces these and limits your `sbs` commands to `merge`, `show`, `ls`.
 - Write unit tests for every new piece of logic. A test must fail if the code were wrong (assert values, not just that something exists). Never weaken an existing test to make your change pass; if one seems wrong, report it.
+- Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
 - Use the exact `data-testid` values from the ticket or `design.md`.
 - To try the app, `sbs app start` (background, prints the URL) and `sbs app stop` before you report. A hook blocks starting it any other way, and running `sbs` in the background.
 - If the ticket is unclear or you are stuck after a reasonable attempt, stop and report the question. Don't guess at product behavior.
