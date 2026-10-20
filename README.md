@@ -76,7 +76,7 @@ template/.claude/
   agents/{lead-dev,dev,reviewer,lead-qa,qa}.md
   hooks/sbs-reminder.mjs                           UserPromptSubmit, only when ON
   hooks/sbs-guard.mjs                              PreToolUse (Edit|Write|NotebookEdit|Bash|PowerShell|Agent|Read|Glob|Grep):
-                                                   role limits for subagents, worker call budget; allows every call it passes (and the PM's while ON), so
+                                                   role limits for subagents, worker activity log; allows every call it passes (and the PM's while ON), so
                                                    auto mode's classifier does not block the process
 ```
 

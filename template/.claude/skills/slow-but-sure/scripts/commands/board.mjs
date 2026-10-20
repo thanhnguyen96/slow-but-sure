@@ -29,12 +29,12 @@ export function cmdInit() {
     const oldDevBlocked = JSON.stringify(c.devBlocked) === JSON.stringify(['tickets/**', 'docs/**']);
     // The default qaWritable before screenshots: add the screenshots folder.
     const oldQaWritable = JSON.stringify(c.qaWritable) === JSON.stringify(['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'tickets/*/TEST-*.md']);
-    if (c.testerWritable || !c.qaWritable || !c.leadDevBlocked || !c.mergeChecks || !c.devBlocked || oldDevBlocked || oldQaWritable || !('setup' in (c.commands || {}))) {
+    if (c.testerWritable || !c.qaWritable || !c.leadDevBlocked || !c.mergeChecks || !c.devBlocked || oldDevBlocked || oldQaWritable || !('setup' in (c.commands || {})) || !c.workerAlert) {
       delete c.testerWritable;
       if (oldDevBlocked) delete c.devBlocked;
       if (oldQaWritable) delete c.qaWritable;
       writeJSON(cfg, { ...DEFAULT_CONFIG, ...c, commands: { ...DEFAULT_CONFIG.commands, ...(c.commands || {}) } });
-      console.log(`updated ${rel(cfg)} (qaWritable, leadDevBlocked, devBlocked, mergeChecks, commands.setup)`);
+      console.log(`updated ${rel(cfg)} (qaWritable, leadDevBlocked, devBlocked, mergeChecks, commands.setup, workerAlert)`);
     }
   }
   if (!fs.existsSync(COUNTERS)) writeJSON(COUNTERS, {});

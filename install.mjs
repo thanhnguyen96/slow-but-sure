@@ -16,14 +16,14 @@ const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"'
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
 const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-guard.mjs"';
 // The guard also allows every call it passes, so auto mode's classifier does not block the process (see the script).
-// Read|Glob|Grep: the worker call budget counts them, and workers may not read node_modules.
+// Read|Glob|Grep: they go into the worker activity log.
 const GUARD_MATCHER = 'Edit|Write|NotebookEdit|Bash|PowerShell|Agent|Read|Glob|Grep';
 // Added by the previous version; the guard's allow covers it now.
 const OLD_SBS_ALLOW = 'Bash(node .claude/skills/slow-but-sure/scripts/sbs.mjs:*)';
 // Hook commands and files of older versions (the interim simple-workflow name, the first tester guard), removed on install.
 const LEGACY_HOOK_CMDS = ['node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-reminder.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-guard.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"'];
 const LEGACY_PATHS = ['.claude/hooks/sw-reminder.mjs', '.claude/hooks/sw-guard.mjs', '.claude/hooks/sbs-tester-guard.mjs', '.claude/skills/simple-workflow', '.claude/skills/sw', '.claude/skills/sw-context'];
-const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/settings.local.json', '.claude/worktrees/', 'test-results/', 'playwright-report/', 'opendesign/'];
+const GITIGNORE_LINES = ['.claude/slow-but-sure.on', '.claude/settings.local.json', '.claude/worktrees/', '.claude/sbs-activity/', 'test-results/', 'playwright-report/', 'opendesign/'];
 
 // Agent files from older versions (roles are now lead-dev/dev/reviewer/lead-qa/qa).
 const LEGACY_AGENTS = ['senior-dev', 'junior-dev', 'senior-tester', 'junior-tester', 'dev-lead', 'tester-lead', 'tester'];

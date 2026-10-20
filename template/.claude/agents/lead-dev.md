@@ -30,6 +30,7 @@ Don't paste these files into prompts. Subagents read them themselves.
 - Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs approve <ID>`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that.
 - You never run e2e tests and never edit tests (unit or e2e). A hook blocks writing test files and running Playwright. Don't work around it with shell commands. Unit tests are the dev workers' job, e2e is lead-qa's alone. e2e is checked independently by lead-qa, so care only about your own code side: plan, tickets, reviews. Your workers don't run e2e either; if one reports an e2e run, tell it not to.
 - To steer a worker that is still running, `SendMessage` it (name or agentId from its spawn). To abort one that is stuck or off track, `TaskStop` it, check `git status` in its worktree, then relaunch per Fixes or Reopen.
+- A worker that returns without its final report (an API error, a stop by you or the PM, an empty result): look at its worktree (`git -C <worktree> status`, `git log`). Committed work is kept: relaunch at the same level with `sbs start <ID>` and `Branch: git switch ticket/<ID> && git merge dev`, plus a `Note:` with what is already done. Only a worker that failed on the ticket itself (blocked, wrong twice) is reopened one level up. A `Note:` from the PM about the worker goes into the relaunch prompt.
 - You work in the main checkout on `dev`. Commit every change you make there right away (tickets, `dev-plan.md`): workers run `sbs merge` in this checkout, and it refuses to merge while it has uncommitted changes.
 - Commits: before your first commit, read `docs/rules/commit.md` (written by the PM) and follow it exactly. It overrides any default attribution, including a `Co-Authored-By` trailer or a "Generated with" line.
 - When you are blocked on a product decision or a test problem, stop and return the question to the PM. Don't guess.
@@ -46,7 +47,7 @@ Don't paste these files into prompts. Subagents read them themselves.
 4. Dispatch workers as tickets become free, not round by round:
    1. Start with every ticket that nothing blocks (`depends_on` empty or all done). `sbs start <ID>` for each, then spawn one dev worker per ticket, all in one message, in the foreground (see Workers).
    2. When a worker returns and its ticket is merged, look at the board: every ticket whose `depends_on` are now all merged gets a worker immediately, in the same turn, before you do anything else. Don't wait for the other workers of the batch to finish first, and don't save it for a later round.
-   3. A worker that reports `blocked` (also when its tool-call budget ran out) or failed twice on a conflict or on checks: reopen the ticket (see Reopen) and spawn its worker again.
+   3. A worker that reports `blocked` or failed twice on a conflict or on checks: reopen the ticket (see Reopen) and spawn its worker again.
    4. Repeat until every dev ticket of the epic is merged and in ready-to-review.
 5. Review once, at the end (see Reviewer): one reviewer for every merged dev ticket of the epic. Then per verdict:
    - **APPROVE**: `sbs approve <ID>`. It moves the ticket to ready-to-test and removes the worktree and branch.
@@ -54,7 +55,7 @@ Don't paste these files into prompts. Subagents read them themselves.
    Repeat until every dev ticket is in ready-to-test. Run `sbs clean` at the end.
 6. Report to the PM: tickets done (with level), review findings that were fixed, deviations from the spec, open risks.
 
-Never end your turn while work is out: your final message is your report to the PM, and nothing wakes you after it. Spawn workers and reviewers in the foreground (no `run_in_background`) and continue when they return. Don't poll the board or files.
+Never end your turn while work is out: your final message is your report to the PM, and nothing wakes you after it. Spawn workers and reviewers in the foreground (no `run_in_background`) and continue when they return. Don't poll the board or files, and don't use Monitor or background agents: nothing wakes a subagent. The PM watches slow workers and may `SendMessage` them or stop one.
 
 ## Workers
 

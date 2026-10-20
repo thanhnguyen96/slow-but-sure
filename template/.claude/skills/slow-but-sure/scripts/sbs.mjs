@@ -12,6 +12,7 @@
 // commands/epic.mjs   epic new | ls
 // commands/setup.mjs  models, mode
 // commands/app.mjs    app start|stop|status, e2e (setup/teardown around the suite), shot (screenshots)
+// commands/watch.mjs  watch (the PM's Monitor loop: long-running workers)
 import { STATUSES, ROLES, LEVELS } from './lib/constants.mjs';
 import { cmdInit, cmdNew, cmdStart, cmdNote, cmdMv, cmdLs, cmdShow, cmdClean } from './commands/board.mjs';
 import { cmdMerge } from './commands/merge.mjs';
@@ -19,6 +20,7 @@ import { cmdApprove, cmdReject, cmdReopen, cmdDone } from './commands/review.mjs
 import { cmdEpic } from './commands/epic.mjs';
 import { cmdModels, cmdMode } from './commands/setup.mjs';
 import { cmdApp, cmdE2e, cmdShot } from './commands/app.mjs';
+import { cmdWatch } from './commands/watch.mjs';
 
 const SHORT_FLAGS = { e: 'epic', t: 'type', n: 'note', b: 'by', l: 'level', d: 'depends', c: 'covers' };
 
@@ -53,6 +55,10 @@ Epics
   sbs epic new <slug>                  create docs/epics/<YYYYMMDD>-<slug>/
   sbs epic [ls]                        list epics with ticket counts
 
+PM
+  sbs watch [--calls N] [--minutes N] [--every N]   never exits; run it under Monitor. Prints "ALERT worker <id> ..."
+                                      when a dev/qa worker passes or N minutes (then again every N calls); see workerAlert in config
+
 Setup
   sbs init | sbs models [--json] | sbs mode <on|off|status>
 
@@ -81,7 +87,7 @@ function parseArgs(argv) {
 const COMMANDS = {
   init: cmdInit, new: cmdNew, start: cmdStart, merge: cmdMerge, approve: cmdApprove, reject: cmdReject,
   reopen: cmdReopen, done: cmdDone, note: cmdNote, mv: cmdMv, ls: cmdLs, list: cmdLs, show: cmdShow,
-  clean: cmdClean, epic: cmdEpic, app: cmdApp, e2e: cmdE2e, shot: cmdShot, models: cmdModels, mode: cmdMode,
+  clean: cmdClean, epic: cmdEpic, app: cmdApp, e2e: cmdE2e, shot: cmdShot, models: cmdModels, mode: cmdMode, watch: cmdWatch,
 };
 
 const { pos, flags } = parseArgs(process.argv.slice(2));

@@ -21,8 +21,10 @@ export const DEFAULT_CONFIG = {
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   // dev workers may not write here (hook-enforced): the board changes only through sbs, docs belong to the PM and leads.
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/rules/**'],
-  // Tool calls per dev/qa worker (hook-enforced): from warn it is told to wrap up, from stop only git and sbs run.
-  workerCallBudget: { warn: 60, stop: 90 },
+  // Every this many tool calls a dev/qa worker is reminded to check its scope (the hook also logs each call in .claude/sbs-activity/).
+  workerNudgeEvery: 40,
+  // `sbs watch` alerts the PM when a worker passes `calls` tool calls or `minutes`, then again every `every` calls.
+  workerAlert: { calls: 60, minutes: 15, every: 40 },
 };
 // Model + effort per subagent role and per worker level. Users edit .claude/slow-but-sure.models.json.
 // The PM is the main conversation: its model and effort are the user's own (/model, /effort).
