@@ -16,6 +16,9 @@ const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"'
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
 const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-guard.mjs"';
 const GUARD_MATCHER = 'Edit|Write|NotebookEdit|Bash';
+// Without it, auto mode's classifier blocks `sbs merge` (a worker writing the main checkout's dev branch) and
+// agents cannot add the rule themselves. The guard still limits which sbs commands each role runs.
+const SBS_ALLOW = 'Bash(node .claude/skills/slow-but-sure/scripts/sbs.mjs:*)';
 // Hook commands and files of older versions (the interim simple-workflow name, the first tester guard), removed on install.
 const LEGACY_HOOK_CMDS = ['node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-reminder.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sw-guard.mjs"', 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-tester-guard.mjs"'];
 const LEGACY_PATHS = ['.claude/hooks/sw-reminder.mjs', '.claude/hooks/sw-guard.mjs', '.claude/hooks/sbs-tester-guard.mjs', '.claude/skills/simple-workflow', '.claude/skills/sw', '.claude/skills/sw-context'];
@@ -128,6 +131,13 @@ function mergeSettings() {
     }
     settings.hooks[event].push({ ...(matcher && { matcher }), hooks: [{ type: 'command', command }] });
     console.log(`  added ${event} hook to .claude/settings.json`);
+    changed = true;
+  }
+  settings.permissions ??= {};
+  settings.permissions.allow ??= [];
+  if (!settings.permissions.allow.includes(SBS_ALLOW)) {
+    settings.permissions.allow.push(SBS_ALLOW);
+    console.log(`  added permission ${SBS_ALLOW} to .claude/settings.json`);
     changed = true;
   }
   if (changed) fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
