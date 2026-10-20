@@ -28,6 +28,7 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 - Write unit tests for every new piece of logic. A test must fail if the code were wrong (assert values, not just that something exists). Never weaken an existing test to make your change pass; if one seems wrong, report it.
 - Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
 - Use the exact `data-testid` values from the ticket or `design.md`.
+- Never run e2e tests (Playwright, `sbs e2e`). lead-qa runs them independently at regression, so your own run adds nothing. Care only about your own ticket's code and its unit tests (`commands.unit`).
 - To try the app, `sbs app start` (background, prints the URL) and `sbs app stop` before you report. A hook blocks starting it any other way, and running `sbs` in the background.
 - Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs merge <ID>`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that. The shell is already in your worktree.
 - If the ticket is unclear or you are stuck after a reasonable attempt, stop and report the question. Don't guess at product behavior.

@@ -37,10 +37,10 @@ If any is missing from the available-skills list, stop and tell the user to run 
 |---|---|---|---|---|
 | PM | main conversation (you) | user's own `/model`, `/effort` | `brief.md`, `design.md`, `plan.md`, mockups; small no-ticket fixes | creates BUG; `sbs mv` overrides; `dev` → release branch after Gate 3 |
 | lead-dev | `lead-dev` | sonnet / medium | `dev-plan.md`, dev tickets. Never tests, never runs e2e | `new`, `start`, `approve`, `reject`, `reopen` for dev tickets |
-| dev | `dev` (worker) | by level | product code + unit tests in its worktree | `sbs merge` its own ticket; `sbs e2e`, `sbs app` |
+| dev | `dev` (worker) | by level | product code + unit tests in its worktree | `sbs merge` its own ticket; `sbs app`. Never e2e |
 | reviewer | `reviewer` | opus / medium | nothing (read-only) | none; answers APPROVE / CHANGES to lead-dev |
-| lead-qa | `lead-qa` | sonnet / medium | `qa-plan.md`, TEST tickets. Never product code | `new`, `start`, `approve`, `reject`, `reopen` for TEST tickets; `done` after regression; `sbs e2e`, `sbs app` |
-| qa | `qa` (worker) | by level | `tests/e2e/**` in its worktree | `sbs merge` its own ticket; `sbs e2e`, `sbs app` |
+| lead-qa | `lead-qa` | sonnet / medium | `qa-plan.md`, TEST tickets. Never product code | `new`, `start`, `approve`, `reject`, `reopen` for TEST tickets; `done` after regression; `sbs e2e`, `sbs shot`, `sbs app` (the only role that runs e2e) |
+| qa | `qa` (worker) | by level | `tests/e2e/**` in its worktree | `sbs merge` its own ticket; `sbs app`. Never runs the tests |
 
 Worker levels (defaults; real values via `sbs models`):
 
@@ -151,20 +151,20 @@ Write `plan.md`:
 
 ## Step 5: implementation
 
-Launch both leads in one message, `run_in_background: true`, with `model`/`effort` from `sbs models --json`. The prompt is just the epic and conventions; add a `Note:` only for something that is not in the epic docs:
+Launch both leads in one message, `run_in_background: true`, with `model`/`effort` from `sbs models --json` and `name: "lead-dev-<epic>"` / `name: "lead-qa-<epic>"`. **One lead-dev and one lead-qa per epic, for the whole epic**: they hold its context. Spawn each once; after that, every later task for a lead (answer, BUG, regression, rerun) goes to the same lead with `SendMessage` (by its name), never a new `Agent` spawn. Spawn a second lead of a role only if the user asks for it explicitly. If a lead cannot be resumed (the SendMessage fails), tell the user before spawning a replacement. The prompt is just the epic and conventions; add a `Note:` only for something that is not in the epic docs:
 
 - **lead-dev:** `Epic: <epic>. Conventions: docs/conventions.md. Write dev-plan.md, create dev tickets, run the rounds (workers merge, a reviewer reviews each batch) until every dev ticket is in ready-to-test. Report back.`
 - **lead-qa:** `Epic: <epic>. Conventions: docs/conventions.md. Authoring mode: write qa-plan.md, create TEST tickets covering the dev tickets, have qa workers write and merge the Playwright tests, review them, report back. Do not run regression yet.`
 
-Each lead runs its whole part in one turn and returns one report. Wait for the completion notifications; don't poll the board or files. While they work, answer the user. If a lead returns a question, decide it or ask the user, then launch that lead again with the answer in a `Note:` line (it picks up from the board). When one lead reports a problem in the other side's work (lead-dev: a test looks wrong; lead-qa: the app looks wrong), you route it: `sbs note` with the evidence and a new run of the right lead, or a BUG ticket.
+Each lead runs its whole part in one turn and returns one report. Wait for the completion notifications; don't poll the board or files. While they work, answer the user. If a lead returns a question, decide it or ask the user, then `SendMessage` that lead the answer in a `Note:` line (it picks up from the board). When one lead reports a problem in the other side's work (lead-dev: a test looks wrong; lead-qa: the app looks wrong), you route it: `sbs note` with the evidence and a `SendMessage` to the right lead, or a BUG ticket.
 
 ## Step 6: regression
 
-When lead-dev reports every dev ticket in ready-to-test and lead-qa reports the tests approved, launch **lead-qa** in regression mode: `Epic: <epic>. Conventions: docs/conventions.md. Regression mode.` On a green suite it also saves screenshots of every page and state in `design.md` to `docs/epics/<epic>/screenshots/`.
+Regression starts only after **both** leads have reported: lead-dev with every dev ticket in ready-to-test, lead-qa with the tests approved. Never launch it while either lead is still running. Only lead-qa runs e2e (not lead-dev, not any worker). Then `SendMessage` the epic's **lead-qa** (the same one) to switch to regression mode: `Regression mode.` On a green suite it also saves screenshots of every page and state in `design.md` to `docs/epics/<epic>/screenshots/`.
 
 - **All pass on the first run:** lead-qa moves the TEST tickets and their dev tickets to `done`.
 - **Test-caused failure:** lead-qa reopens the owning TEST ticket (even from done), fixes it through a qa worker and reruns.
-- **Dev-caused failure:** lead-qa reports with evidence. Create `sbs new bug "<title>" -e <epic> -d <FEAT-ID> -b pm` with the evidence in Context and send it to lead-dev. If the same BUG fails regression again, lead-dev reopens it (level up) instead of creating another. After it reaches ready-to-test, send lead-qa to rerun.
+- **Dev-caused failure:** lead-qa reports with evidence. Create `sbs new bug "<title>" -e <epic> -d <FEAT-ID> -b pm` with the evidence in Context and `SendMessage` it to the epic's lead-dev. If the same BUG fails regression again, lead-dev reopens it (level up) instead of creating another. After it reaches ready-to-test, send lead-qa to rerun.
 - **Unclear cause:** compare against `design.md` and the acceptance criteria; if the spec is ambiguous, ask the user, then route it as test or dev.
 
 Loop until the full suite passes.
@@ -172,8 +172,8 @@ Loop until the full suite passes.
 ## Step 7: delivery
 
 1. **Trace.** Write `docs/epics/<epic>/trace.md`: one row per acceptance criterion in `brief.md` with the tickets that implement it, the e2e or unit tests that prove it (`grep -rn "// Ticket:" tests/e2e` and the AC → test tables in `reviews.md`), and the regression result. A row with no test or a failing test blocks delivery: route it like a regression failure (a TEST ticket to lead-qa, or a BUG to lead-dev).
-2. **Compare with the mockups.** `sbs shot -e <epic> --mockups` saves a PNG of every `mockups/*.html` next to it, at the screenshots' viewport (1280x720). Put each screenshot next to its mockup PNG. Layout, labels, states or elements that differ from the approved mockup are BUG tickets for lead-dev, unless `brief.md` or `design.md` records the change. Loop through Steps 5 and 6 for them; in the rerun's prompt to lead-qa add `Note: save the screenshots again.` so they show the fix.
-3. **Gate 3, visual like the mockup review.** `sbs app start` (prints the URL). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Send all of this as a message first; only then AskUserQuestion with "Approve" and "Adjust" (the user can't approve what they haven't seen). "Adjust" becomes tickets (Step 0 triage) and the loop runs again. `sbs app stop` afterwards.
+2. **Mockup PNGs.** `sbs shot -e <epic> --mockups` saves a PNG of every `mockups/*.html` next to it, at the screenshots' viewport (1280x720). You don't compare them yourself: the user reviews them at Gate 3.
+3. **Gate 3, visual like the mockup review.** `sbs app start` (prints the URL). Show the user, per page, the screenshot next to the mockup PNG (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Send all of this as a message first; only then AskUserQuestion with "Approve" and "Adjust" (the user can't approve what they haven't seen). "Adjust" becomes tickets (Step 0 triage) and the loop runs again; the rerun to lead-qa says `Note: save the screenshots again.` `sbs app stop` afterwards.
 
 Before Gate 3, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; `sbs app status` must say not running (`sbs app stop` frees the port).
 
@@ -182,6 +182,7 @@ After "Approve", ask whether to merge `dev` into `<release>`. Only after a yes: 
 ## PM rules
 
 - Inside the ticket process, never write product code or e2e tests yourself.
+- Exactly one lead-dev and one lead-qa per epic, spawned once in Step 5. Never spawn another of either, and never respawn one for a new task: `SendMessage` the existing lead. Only an explicit user request overrides this.
 - Add `-b pm` to every `sbs` command that records an author (`new`, `note`, `start`, `mv`); without it the author defaults to the ticket's lead.
 - Follow the user's CLAUDE.md commit rules (`~/.claude/CLAUDE.md` and the project's) for your own commits; no `Co-Authored-By` trailer if they forbid it.
 - Use Bash, not PowerShell, for commands and file writes while the process is on: the role hook reads Bash commands, and Windows PowerShell 5.1 writes files with a BOM or in the ANSI codepage (a BOM in `tickets/config.json` once made `sbs merge` skip its checks). Use PowerShell only for something Bash can't do, and write files with the Write tool.

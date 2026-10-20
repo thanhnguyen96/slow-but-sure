@@ -11,6 +11,7 @@
 //   every role:   no git push, reset --hard, branch -D, --no-verify, checkout of the release branch.
 //   sbs:           each role only runs its own sbs commands (init, mv, mode, epic new are the PM's).
 //   lead-dev:     no Playwright / e2e command.
+//   e2e (`sbs e2e`, `sbs shot`): lead-qa only; workers and lead-dev never run it.
 //   workers, leads: no app server or Playwright test run outside `sbs app` / `sbs e2e` / `sbs shot` (they start, wait and stop it);
 //                 `sbs` never in the background (it returns on its own; a background run invites polling).
 //   reviewer:     read-only command allowlist.
@@ -31,7 +32,7 @@ const DEFAULTS = {
 };
 const SBS_ALLOWED = {
   dev: ['merge', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
-  qa: ['merge', 'e2e', 'app', 'shot', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
+  qa: ['merge', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
   reviewer: ['show', 'ls', 'list', 'epic', 'models', 'help', ''],
   'lead-dev': ['new', 'start', 'approve', 'reject', 'reopen', 'note', 'app', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
   'lead-qa': ['new', 'start', 'approve', 'reject', 'reopen', 'done', 'note', 'e2e', 'app', 'shot', 'show', 'ls', 'list', 'clean', 'epic', 'models', 'help', ''],
@@ -257,7 +258,9 @@ for (let words of parse(String(toolInput.command || ''))) {
     // `playwright test` (any launcher: npx, pnpm exec, node_modules/.bin), not `--list`, which only lists the tests
     const pwAt = words.findIndex((w) => /(^|[\\/])playwright(\.cmd)?$/i.test(w));
     const pwTest = (pwAt !== -1 && words[pwAt + 1] === 'test' || commands.e2e && line.includes(commands.e2e)) && !words.includes('--list');
-    if (pwTest && agent !== 'lead-dev') block('may not run Playwright tests directly. Use `sbs e2e` (whole suite) or `sbs e2e <spec file> -g "name"` (a subset); it starts the app if needed, runs the tests and always stops the app. `npx playwright test --list` is allowed. Screenshots: `sbs shot`.');
+    if (pwTest && agent !== 'lead-dev') block(agent === 'lead-qa'
+      ? 'may not run Playwright tests directly. Use `sbs e2e` (whole suite) or `sbs e2e <spec file> -g "name"` (a subset); it starts the app if needed, runs the tests and always stops the app. `npx playwright test --list` is allowed. Screenshots: `sbs shot`.'
+      : 'may not run e2e tests; only lead-qa runs them, in regression mode. `npx playwright test --list` is allowed.');
   }
 
   // e2e belongs to lead-qa and qa
