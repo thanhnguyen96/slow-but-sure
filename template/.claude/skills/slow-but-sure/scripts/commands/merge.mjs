@@ -7,7 +7,7 @@ import { MAIN, IN_GIT, git, tryGit, worktrees, rel, config, lock, guardMain, com
 import { workerOf, by, renderTicket, findTicket, moveTicket, needStatus, epicLog, MERGES_HEADER } from '../lib/tickets.mjs';
 
 function runCheck(name, cmd) {
-  const r = spawnSync(cmd, { cwd: MAIN, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(cmd, { cwd: MAIN, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true });
   return { name, cmd, ok: r.status === 0, out: `${r.stdout || ''}${r.stderr || ''}`, status: r.status };
 }
 
@@ -35,7 +35,7 @@ export function cmdMerge(pos, flags) {
   if (git(['rev-list', '--count', `${dev}..${branch}`]) === '0') die(`${branch} has no commits that are not in ${dev}; nothing to merge`);
 
   const title = t.fm.title;
-  const m = spawnSync('git', ['merge', '--no-ff', '--no-commit', branch], { cwd: MAIN, encoding: 'utf8' });
+  const m = spawnSync('git', ['merge', '--no-ff', '--no-commit', branch], { cwd: MAIN, encoding: 'utf8', windowsHide: true });
   if (m.status !== 0) {
     const conflicts = tryGit(['diff', '--name-only', '--diff-filter=U']) || '';
     tryGit(['merge', '--abort']);

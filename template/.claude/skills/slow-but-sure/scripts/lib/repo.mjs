@@ -6,7 +6,7 @@ import { DEFAULT_CONFIG, LOCK_WAIT_MS, LOCK_STALE_MS, DIRTY_WAIT_S } from './con
 import { die, sleep, readJSON } from './util.mjs';
 
 export function git(args, cwd = MAIN) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }).trim();
 }
 
 export function tryGit(args, cwd = MAIN) {

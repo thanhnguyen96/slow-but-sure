@@ -36,18 +36,18 @@ If any is missing from the available-skills list, stop and tell the user to run 
 | Role | Agent | Default model / effort | Writes | Board |
 |---|---|---|---|---|
 | PM | main conversation (you) | user's own `/model`, `/effort` | `brief.md`, `design.md`, `plan.md`, mockups; small no-ticket fixes | creates BUG; `sbs mv` overrides; `dev` → release branch after Gate 3 |
-| lead-dev | `lead-dev` | sonnet / xhigh | `dev-plan.md`, dev tickets. Never tests, never runs e2e | `new`, `start`, `approve`, `reject`, `reopen` for dev tickets |
+| lead-dev | `lead-dev` | sonnet / medium | `dev-plan.md`, dev tickets. Never tests, never runs e2e | `new`, `start`, `approve`, `reject`, `reopen` for dev tickets |
 | dev | `dev` (worker) | by level | product code + unit tests in its worktree | `sbs merge` its own ticket; `sbs e2e`, `sbs app` |
 | reviewer | `reviewer` | opus / medium | nothing (read-only) | none; answers APPROVE / CHANGES to lead-dev |
-| lead-qa | `lead-qa` | sonnet / xhigh | `qa-plan.md`, TEST tickets. Never product code | `new`, `start`, `approve`, `reject`, `reopen` for TEST tickets; `done` after regression; `sbs e2e`, `sbs app` |
+| lead-qa | `lead-qa` | sonnet / medium | `qa-plan.md`, TEST tickets. Never product code | `new`, `start`, `approve`, `reject`, `reopen` for TEST tickets; `done` after regression; `sbs e2e`, `sbs app` |
 | qa | `qa` (worker) | by level | `tests/e2e/**` in its worktree | `sbs merge` its own ticket; `sbs e2e`, `sbs app` |
 
 Worker levels (defaults; real values via `sbs models`):
 
 | Level | Model / effort | When |
 |---|---|---|
-| junior | haiku / max | every new ticket |
-| middle | sonnet / xhigh | reopened once |
+| junior | haiku / medium | every new ticket |
+| middle | sonnet / medium | reopened once |
 | senior | opus / medium | reopened twice or more (cap) |
 
 `.claude/hooks/sbs-guard.mjs` limits every subagent (never you): no push, `reset --hard`, `--no-verify` or checkout of the release branch; each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` are yours); dev may not write `devBlocked` (tickets, epic docs, conventions); lead-qa and qa only `qaWritable`; lead-dev no tests (`leadDevBlocked`) and no Playwright; the reviewer runs read-only commands only; the app and Playwright tests start only through `sbs app` / `sbs e2e`, and no `sbs` command runs in the background. Lists are in `tickets/config.json`. If a lead is stuck on the other side's work, it reports to you and you coordinate.
@@ -112,7 +112,7 @@ Invoke the `grilling` skill and interview the user until the request is unambigu
 - Look facts up yourself. Ask the user only for decisions.
 - Cover goal, users, scope in/out, edge cases, error states, data, auth, performance, acceptance criteria, and what "done" looks like.
 
-Then `sbs epic new <slug>` and write `brief.md` in the new folder.
+Then `sbs epic new <slug>` and write `brief.md` in the new folder. It records the user's answers, nothing more: a product decision you notice while writing it (where filtering runs, an API shape, history behavior) is one more AskUserQuestion before Gate 1, not something you settle in the brief. Technical choices go in `plan.md`.
 
 **Gate 1:** show the brief summary and ask the user to confirm it.
 
@@ -173,7 +173,7 @@ Loop until the full suite passes.
 
 1. **Trace.** Write `docs/epics/<epic>/trace.md`: one row per acceptance criterion in `brief.md` with the tickets that implement it, the e2e or unit tests that prove it (`grep -rn "// Ticket:" tests/e2e` and the AC → test tables in `reviews.md`), and the regression result. A row with no test or a failing test blocks delivery: route it like a regression failure (a TEST ticket to lead-qa, or a BUG to lead-dev).
 2. **Compare with the mockups.** `sbs shot -e <epic> --mockups` saves a PNG of every `mockups/*.html` next to it, at the screenshots' viewport (1280x720). Put each screenshot next to its mockup PNG. Layout, labels, states or elements that differ from the approved mockup are BUG tickets for lead-dev, unless `brief.md` or `design.md` records the change. Loop through Steps 5 and 6 for them; in the rerun's prompt to lead-qa add `Note: save the screenshots again.` so they show the fix.
-3. **Gate 3, visual like the mockup review.** `sbs app start` (prints the URL). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Then AskUserQuestion with "Approve" and "Adjust". "Adjust" becomes tickets (Step 0 triage) and the loop runs again. `sbs app stop` afterwards.
+3. **Gate 3, visual like the mockup review.** `sbs app start` (prints the URL). Show the user, per page, the screenshot next to the mockup (paths or links) and the app URL to try it, plus one short line each for: tickets done, the suite result (command and pass count), review findings that were fixed, known limitations. Send all of this as a message first; only then AskUserQuestion with "Approve" and "Adjust" (the user can't approve what they haven't seen). "Adjust" becomes tickets (Step 0 triage) and the loop runs again. `sbs app stop` afterwards.
 
 Before Gate 3, clean up: `sbs clean`; `git worktree list` and `git branch` must show no leftover `ticket/*` or `worktree-agent-*` for this epic; `sbs app status` must say not running (`sbs app stop` frees the port).
 
@@ -184,5 +184,6 @@ After "Approve", ask whether to merge `dev` into `<release>`. Only after a yes: 
 - Inside the ticket process, never write product code or e2e tests yourself.
 - Add `-b pm` to every `sbs` command that records an author (`new`, `note`, `start`, `mv`); without it the author defaults to the ticket's lead.
 - Follow the user's CLAUDE.md commit rules (`~/.claude/CLAUDE.md` and the project's) for your own commits; no `Co-Authored-By` trailer if they forbid it.
+- Use Bash, not PowerShell, for commands and file writes while the process is on: the role hook reads Bash commands, and Windows PowerShell 5.1 writes files with a BOM or in the ANSI codepage (a BOM in `tickets/config.json` once made `sbs merge` skip its checks). Use PowerShell only for something Bash can't do, and write files with the Write tool.
 - Give subagents the epic name and `docs/conventions.md`, never pasted copies of docs.
 - Keep the user informed at gates and when something is blocked. Don't narrate every subagent step.

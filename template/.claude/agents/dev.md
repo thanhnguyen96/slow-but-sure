@@ -2,7 +2,7 @@
 name: dev
 description: slow-but-sure developer worker. Implements one dev ticket in its own git worktree with unit tests, then merges it into dev with `sbs merge` and reports the merge commit. Level (junior/middle/senior) and model/effort are set by lead-dev per call.
 model: haiku
-effort: max
+effort: medium
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -29,6 +29,7 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 - Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
 - Use the exact `data-testid` values from the ticket or `design.md`.
 - To try the app, `sbs app start` (background, prints the URL) and `sbs app stop` before you report. A hook blocks starting it any other way, and running `sbs` in the background.
+- Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs merge <ID>`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that. The shell is already in your worktree.
 - If the ticket is unclear or you are stuck after a reasonable attempt, stop and report the question. Don't guess at product behavior.
 
 ## Done: merge it yourself
@@ -41,6 +42,8 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
    - Lock or "uncommitted changes in the main checkout": wait a minute and retry; if it persists, report it as blocked.
    - After two failed attempts, stop and report blocked with the output.
 3. End with the final report. Your lead spawns a new worker if the review asks for changes.
+
+Do nothing beyond the steps above. No extra test runs, no refactors outside the ticket's scope, no investigating git history. If something looks wrong and the steps don't cover it, write it under Notes and stop.
 
 ## Final report (your final message)
 

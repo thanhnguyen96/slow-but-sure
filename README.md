@@ -3,8 +3,8 @@
 Claude Code skill (`/slow-but-sure`, alias `/sbs`): ticket-driven software process.
 
 - **PM**: main conversation. Grills the user, writes the epic (brief, design + mockups, system design + rough plan), coordinates.
-- **lead-dev / lead-qa**: leads (default Sonnet/xhigh). Read the epic, write the detailed plan (`dev-plan.md` / `qa-plan.md`), create tickets, dispatch workers, approve or reject merged tickets. lead-dev never edits tests or runs e2e; lead-qa never edits product code (both hook-enforced). Problems on the other side go to the PM.
-- **dev / qa**: workers, one ticket each, in their own git worktree. They merge their own branch into `dev` with `sbs merge` and report the merge commit. Level per ticket: junior (Haiku/max), each reopen raises it to middle (Sonnet/xhigh), then senior (Opus/medium, cap).
+- **lead-dev / lead-qa**: leads (default Sonnet/medium). Read the epic, write the detailed plan (`dev-plan.md` / `qa-plan.md`), create tickets, dispatch workers, approve or reject merged tickets. lead-dev never edits tests or runs e2e; lead-qa never edits product code (both hook-enforced). Problems on the other side go to the PM.
+- **dev / qa**: workers, one ticket each, in their own git worktree. They merge their own branch into `dev` with `sbs merge` and report the merge commit. Level per ticket: junior (Haiku/medium), each reopen raises it to middle (Sonnet/medium), then senior (Opus/medium, cap).
 - **reviewer**: one per batch of merged dev tickets (default Opus/medium), spawned by lead-dev. Reads conventions and the whole epic, then reviews every ticket of the batch. Read-only; answers APPROVE or CHANGES. Rejected tickets are fixed forward on the same branch by a new worker at the same level.
 - **Models**: `.claude/slow-but-sure.models.json` (created on first `/sbs on`). `/sbs models` shows the table. Set the PM's model and effort yourself with `/model` and `/effort`.
 - **Board**: `tickets/{todo,in-progress,ready-to-review,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `tickets/README.md` describes every transition.
@@ -75,7 +75,9 @@ template/.claude/
   skills/sbs-context/SKILL.md                      /sbs-context
   agents/{lead-dev,dev,reviewer,lead-qa,qa}.md
   hooks/sbs-reminder.mjs                           UserPromptSubmit, only when ON
-  hooks/sbs-guard.mjs                              PreToolUse (Edit|Write|NotebookEdit|Bash): role limits, subagents only
+  hooks/sbs-guard.mjs                              PreToolUse (Edit|Write|NotebookEdit|Bash|PowerShell|Agent): role limits for
+                                                   subagents; allows every call it passes (and the PM's while ON), so
+                                                   auto mode's classifier does not block the process
 ```
 
 Requires Claude Code with nested subagents (default depth 3) and Node ≥ 18.

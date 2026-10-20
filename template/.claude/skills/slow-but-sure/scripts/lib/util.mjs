@@ -27,7 +27,8 @@ export function slugify(s) {
 }
 
 export function readJSON(file, fallback) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
+  // A BOM (Windows PowerShell 5.1 writes one) would make JSON.parse fail and the file silently fall back.
+  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')); } catch { return fallback; }
 }
 
 export function writeJSON(file, obj) {

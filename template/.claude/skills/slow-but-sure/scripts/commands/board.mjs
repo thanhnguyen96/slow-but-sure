@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { STATUSES, TYPES, DEFAULT_CONFIG } from '../lib/constants.mjs';
 import { die, now, slugify, readJSON, writeJSON } from '../lib/util.mjs';
-import { TICKETS, EPICS, COUNTERS, README_TEMPLATE, IN_GIT, tryGit, rel, lock, guardMain, commitFiles, cleanupTicket, worktrees } from '../lib/repo.mjs';
+import { TICKETS, EPICS, COUNTERS, README_TEMPLATE, IN_GIT, tryGit, rel, lock, guardMain, commitFiles, cleanupTicket, freeBranch, worktrees } from '../lib/repo.mjs';
 import {
   level, idList, leadOf, workerOf, by, parseTicket, renderTicket, appendHistory,
   allTickets, findTicket, moveTicket, needStatus, ticketTemplate,
@@ -80,6 +80,13 @@ export function cmdNew(pos, flags) {
 
 export function cmdStart(pos, flags) {
   const t = findTicket(pos[0]);
+  // A relaunch (the worker died or was stopped): its worktree still holds the branch, and a new worker
+  // in its own worktree cannot switch to it or remove the old one.
+  if (t.status === 'in-progress') {
+    freeBranch(t.fm.branch);
+    console.log(`${t.id}: already in-progress (level ${t.fm.level || 'junior'}); branch ${t.fm.branch} is free for a new worker: git switch ${t.fm.branch}`);
+    return;
+  }
   needStatus(t, 'todo');
   const who = by(flags, leadOf(t.fm.type));
   const assignee = workerOf(t.fm.type);

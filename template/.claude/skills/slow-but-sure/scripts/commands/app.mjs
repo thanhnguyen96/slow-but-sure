@@ -47,7 +47,7 @@ const portBusy = async (port) => (await answers(port, '127.0.0.1')) || (await an
 // Pids listening on the port.
 function portOwners(port) {
   if (process.platform === 'win32') {
-    const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8' }).stdout || '';
+    const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8', windowsHide: true }).stdout || '';
     return [...new Set(out.split(/\r?\n/).map((l) => l.trim().split(/\s+/))
       .filter((c) => c[0] === 'TCP' && c[3] === 'LISTENING' && c[1].endsWith(`:${port}`)).map((c) => Number(c[4])).filter(Boolean))];
   }
@@ -62,7 +62,7 @@ function alive(pid) {
 // Kills the process and its children (npm start -> node server.js).
 function killTree(pid) {
   if (!pid || !alive(pid)) return;
-  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
   else {
     try { process.kill(-pid, 'SIGTERM'); } catch { try { process.kill(pid, 'SIGTERM'); } catch {} }
   }
@@ -90,10 +90,20 @@ async function startApp(dir, port) {
   }
   if (await portBusy(port)) die(`port ${port} is in use by pid ${portOwners(port).join(', ') || '?'}, not by an app sbs started. \`sbs app stop\` frees it.`);
   const log = path.join(os.tmpdir(), `sbs-app-${port}.log`);
-  const fd = fs.openSync(log, 'w');
-  const child = spawn(cmd, { cwd: dir, shell: true, detached: true, stdio: ['ignore', fd, fd], windowsHide: true });
+  let child;
+  if (process.platform === 'win32') {
+    // A detached process has no console, so the shell's console children (npm, node) would each open a visible
+    // window. A detached node launcher runs the shell with piped output instead: Windows then gives it a hidden
+    // console that the whole app tree shares. `sbs app stop` kills the tree from the launcher's pid.
+    const launcher = "const fs=require('fs');const c=require('child_process').spawn(process.argv[1],{shell:true,stdio:['ignore','pipe','pipe'],windowsHide:true});"
+      + "const o=fs.createWriteStream(process.argv[2]);c.stdout.pipe(o);c.stderr.pipe(o);c.on('exit',(code)=>process.exit(code??1));";
+    child = spawn(process.execPath, ['-e', launcher, cmd, log], { cwd: dir, detached: true, stdio: 'ignore', windowsHide: true });
+  } else {
+    const fd = fs.openSync(log, 'w');
+    child = spawn(cmd, { cwd: dir, shell: true, detached: true, stdio: ['ignore', fd, fd] });
+    fs.closeSync(fd);
+  }
   child.unref();
-  fs.closeSync(fd);
   const started = { pid: child.pid, port, cwd: dir, cmd, log, url: `http://localhost:${port}` };
   writeJSON(stateFile(), started);
   if (!await waitFor(() => portBusy(port), START_WAIT_S)) {
@@ -153,7 +163,7 @@ export async function cmdE2e() {
     if (/playwright/.test(cmd) && !/--reporter/.test(cmd)) cmd += ' --reporter=line';
     if (extra.length) cmd += ` ${extra.map((a) => (/^[\w./:=@-]+$/.test(a) ? a : JSON.stringify(a))).join(' ')}`;
     console.log(`$ ${cmd}`);
-    const r = spawnSync(cmd, { cwd: dir, shell: true, stdio: 'inherit', timeout: E2E_TIMEOUT_S * 1000, env: { ...process.env, CI: '1' } });
+    const r = spawnSync(cmd, { cwd: dir, shell: true, stdio: 'inherit', timeout: E2E_TIMEOUT_S * 1000, windowsHide: true, env: { ...process.env, CI: '1' } });
     if (r.error?.code === 'ETIMEDOUT') console.error(`sbs: e2e stopped after ${E2E_TIMEOUT_S}s. Run a subset: sbs e2e <spec file or -g "name">`);
     code = r.status ?? 1;
   } finally {

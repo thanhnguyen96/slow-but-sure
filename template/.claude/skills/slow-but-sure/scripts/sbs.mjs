@@ -26,7 +26,8 @@ const USAGE = `sbs: slow-but-sure board        (sbs = node .claude/skills/slow-b
 
 Tickets
   sbs new <feat|bug|ref|init|test> "<title>" -e <epic> [-d ID,ID] [-c ID,ID] [-l level] [-b role]
-  sbs start <ID> [-l level]            todo -> in-progress, assignee dev (qa for TEST)
+  sbs start <ID> [-l level]            todo -> in-progress, assignee dev (qa for TEST);
+                                      on an in-progress ticket: frees its branch for a relaunched worker
   sbs merge <ID> [--no-checks]         worker: merge ticket/<ID> into dev, run checks, -> ready-to-review
                                       exit 2 = conflict, exit 3 = checks failed (nothing merged)
   sbs approve <ID> ["note"]            lead: ready-to-review -> ready-to-test, cleans worktree + branch
@@ -85,8 +86,8 @@ const COMMANDS = {
 
 const { pos, flags } = parseArgs(process.argv.slice(2));
 const cmd = pos.shift();
-if (!COMMANDS[cmd]) {
+if (!COMMANDS[cmd] || flags.help) {
   console.log(USAGE);
-  process.exit(cmd && cmd !== 'help' ? 1 : 0);
+  process.exit(cmd && cmd !== 'help' && !flags.help ? 1 : 0);
 }
 await COMMANDS[cmd](pos, flags);

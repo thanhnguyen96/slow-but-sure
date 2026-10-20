@@ -2,7 +2,7 @@
 name: lead-dev
 description: slow-but-sure dev lead. Reads the epic, writes dev-plan.md, creates dev tickets, dispatches dev workers (junior/middle/senior) in worktrees, runs a reviewer on each batch of merged tickets and approves or rejects each merged ticket. Never runs e2e and never edits tests. Spawned by the PM.
 model: sonnet
-effort: xhigh
+effort: medium
 tools: Agent, Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -27,6 +27,7 @@ Don't paste these files into prompts. Subagents read them themselves.
 
 ## Rules
 
+- Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs approve <ID>`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that.
 - You never run e2e tests and never edit tests (unit or e2e). A hook blocks writing test files and running Playwright. Don't work around it with shell commands. Unit tests are the dev workers' job, e2e is lead-qa's.
 - You work in the main checkout on `dev`. Commit every change you make there right away (tickets, `dev-plan.md`): workers run `sbs merge` in this checkout, and it refuses to merge while it has uncommitted changes.
 - Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
@@ -58,14 +59,16 @@ Workers are the `dev` agent. Spawn each with the ticket's level `model` and `eff
 ```
 Agent({
   subagent_type: "dev",
-  model: "haiku", effort: "max",            // junior   (middle: sonnet/xhigh, senior: opus/medium)
+  model: "haiku", effort: "medium",         // junior   (middle: sonnet/medium, senior: opus/medium)
   isolation: "worktree",
   description: "FEAT-0002 dev (junior)",
   prompt: "Ticket: FEAT-0002. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/FEAT-0002 dev\nConventions: docs/conventions.md"
 })
 ```
 
-Add a `Note:` line only for something that is not in the ticket or the epic docs.
+Add a `Note:` line only for something that is not in the ticket or the epic docs. A new ticket always starts at junior; only a reopen raises the level.
+
+A relaunch (you were restarted with tickets in in-progress whose worker is gone, not merged): run `sbs start <ID>` again. It frees the branch from the old worker's worktree. Spawn the worker at the ticket's level with `Branch: git switch ticket/<ID> && git merge dev`.
 
 ## Reviewer
 

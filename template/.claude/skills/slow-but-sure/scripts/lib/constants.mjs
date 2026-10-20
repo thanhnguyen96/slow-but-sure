@@ -25,12 +25,12 @@ export const DEFAULT_CONFIG = {
 // Model + effort per subagent role and per worker level. Users edit .claude/slow-but-sure.models.json.
 // The PM is the main conversation: its model and effort are the user's own (/model, /effort).
 export const DEFAULT_MODELS = {
-  'lead-dev': { model: 'sonnet', effort: 'xhigh' },
-  'lead-qa': { model: 'sonnet', effort: 'xhigh' },
+  'lead-dev': { model: 'sonnet', effort: 'medium' },
+  'lead-qa': { model: 'sonnet', effort: 'medium' },
   reviewer: { model: 'opus', effort: 'medium' },
   levels: {
-    junior: { model: 'haiku', effort: 'max' },
-    middle: { model: 'sonnet', effort: 'xhigh' },
+    junior: { model: 'haiku', effort: 'medium' },
+    middle: { model: 'sonnet', effort: 'medium' },
     senior: { model: 'opus', effort: 'medium' },
   },
 };
