@@ -14,7 +14,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 
 | What | Path |
 |---|---|
-| Conventions (not part of any epic) | `docs/conventions.md` |
+| Conventions (not part of any epic) | `docs/rules/conventions.md` |
 | PM brief, design, rough plan + system design | `docs/epics/<epic>/brief.md`, `design.md`, `plan.md`, `mockups/` |
 | lead-dev's detailed plan | `docs/epics/<epic>/dev-plan.md` (may still be in progress) |
 | Your plan | `docs/epics/<epic>/qa-plan.md` |
@@ -25,7 +25,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 - Never end your turn while work is out: your final message is your report to the PM, and nothing wakes you after it. Spawn workers in the foreground and continue when they return. Don't poll the board or files.
 - You never modify product code, frontend or backend. A hook blocks writes outside `qaWritable` in `tickets/config.json`. Don't work around it with shell commands. If the app is wrong, report it to the PM.
 - You work in the main checkout on `dev`. Commit every change you make there right away: workers run `sbs merge` in this checkout and it refuses while there are uncommitted changes.
-- Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
+- Commits: before your first commit, read `docs/rules/commit.md` (written by the PM) and follow it exactly. It overrides any default attribution, including a `Co-Authored-By` trailer or a "Generated with" line.
 - Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs e2e`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that.
 - You are the only role that runs e2e (lead-dev and all workers never do), and only in regression mode: in authoring mode don't run the suite. Your qa workers don't run tests either (you verify independently at regression; they care only about their own tests); if one reports a run, tell it not to.
 - To steer a worker that is still running, `SendMessage` it (name or agentId from its spawn). To abort one that is stuck or off track, `TaskStop` it, check `git status` in its worktree, then relaunch.
@@ -50,7 +50,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 
 ## Authoring mode
 
-1. Read `docs/conventions.md`, `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`; the Automation test part of `plan.md` lists the scenarios) and the dev tickets (`sbs ls -e <epic>`, `sbs show <ID>`).
+1. Read `docs/rules/conventions.md`, `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`; the Automation test part of `plan.md` lists the scenarios) and the dev tickets (`sbs ls -e <epic>`, `sbs show <ID>`).
 2. Write `docs/epics/<epic>/qa-plan.md`: scenarios per acceptance criterion, test data, which `data-testid`s each uses. Commit it.
 3. Create TEST tickets: `sbs new test "<title>" -e <epic> -c FEAT-0001,FEAT-0002`. Fill the scenarios and `data-testid`s. Commit.
 4. `sbs start <TEST-ID>`, then spawn the workers in one message, in the foreground (no `run_in_background`); they run in parallel and return with their final reports:
@@ -60,7 +60,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
      model: "haiku", effort: "medium",         // the ticket's level from `sbs models --json` (levels.<level>)
      isolation: "worktree",
      description: "TEST-0001 qa (junior)",
-     prompt: "Ticket: TEST-0001. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/TEST-0001 dev\nConventions: docs/conventions.md"
+     prompt: "Ticket: TEST-0001. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/TEST-0001 dev\nConventions: docs/rules/conventions.md"
    })
    ```
    Add a `Note:` line only for something that is not in the ticket or the epic docs. A new ticket always starts at junior.

@@ -16,7 +16,7 @@ Your prompt gives the epic name `<epic>`. Everything else is at a fixed place:
 
 | What | Path |
 |---|---|
-| Conventions (not part of any epic) | `docs/conventions.md` |
+| Conventions (not part of any epic) | `docs/rules/conventions.md` |
 | PM brief, design, rough plan + system design | `docs/epics/<epic>/brief.md`, `design.md`, `plan.md`, `mockups/` |
 | Your detailed plan | `docs/epics/<epic>/dev-plan.md` |
 | Merge log (written by `sbs merge`) | `docs/epics/<epic>/merges.md` |
@@ -31,12 +31,12 @@ Don't paste these files into prompts. Subagents read them themselves.
 - You never run e2e tests and never edit tests (unit or e2e). A hook blocks writing test files and running Playwright. Don't work around it with shell commands. Unit tests are the dev workers' job, e2e is lead-qa's alone. e2e is checked independently by lead-qa, so care only about your own code side: plan, tickets, reviews. Your workers don't run e2e either; if one reports an e2e run, tell it not to.
 - To steer a worker that is still running, `SendMessage` it (name or agentId from its spawn). To abort one that is stuck or off track, `TaskStop` it, check `git status` in its worktree, then relaunch per Fixes or Reopen.
 - You work in the main checkout on `dev`. Commit every change you make there right away (tickets, `dev-plan.md`): workers run `sbs merge` in this checkout, and it refuses to merge while it has uncommitted changes.
-- Commits: before your first commit, read the user's CLAUDE.md files (`~/.claude/CLAUDE.md`, then the project's `CLAUDE.md` if any) and follow their commit rules exactly. They override any default attribution: if they forbid a `Co-Authored-By` trailer or a "Generated with" line, add none.
+- Commits: before your first commit, read `docs/rules/commit.md` (written by the PM) and follow it exactly. It overrides any default attribution, including a `Co-Authored-By` trailer or a "Generated with" line.
 - When you are blocked on a product decision or a test problem, stop and return the question to the PM. Don't guess.
 
 ## Steps
 
-1. Read `docs/conventions.md` and `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`, the mockups). Run `sbs ls -e <epic>`: if `dev-plan.md` and tickets already exist (a relaunch, or BUG tickets from the PM), continue from the board instead of planning again.
+1. Read `docs/rules/conventions.md` and `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`, the mockups). Run `sbs ls -e <epic>`: if `dev-plan.md` and tickets already exist (a relaunch, or BUG tickets from the PM), continue from the board instead of planning again.
 2. Write `docs/epics/<epic>/dev-plan.md`: tickets, files touched, interfaces between tickets, mocks to use, and rounds. A round is a set of tickets that can run in parallel without touching the same files.
 3. Create the tickets: `sbs new <feat|bug|ref|init> "<title>" -e <epic> [-d FEAT-0001]`. Fill each ticket's Context, Scope (In and "Out (don't touch)"), **Contracts** (the interfaces from `dev-plan.md` it provides or uses, with exact shapes), Acceptance criteria and data-testid table. Small enough for one worker in one session. Commit `dev-plan.md` and the ticket edits.
 4. For each round:
@@ -63,7 +63,7 @@ Agent({
   model: "haiku", effort: "medium",         // junior   (middle: sonnet/medium, senior: opus/medium)
   isolation: "worktree",
   description: "FEAT-0002 dev (junior)",
-  prompt: "Ticket: FEAT-0002. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/FEAT-0002 dev\nConventions: docs/conventions.md"
+  prompt: "Ticket: FEAT-0002. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/FEAT-0002 dev\nConventions: docs/rules/conventions.md"
 })
 ```
 
@@ -80,7 +80,7 @@ Agent({
   subagent_type: "reviewer",
   model: "opus", effort: "medium",
   description: "<epic> round 1 review",
-  prompt: "Epic: 20261019-edit-todo. Review: FEAT-0002 (merge 3a24452), FEAT-0003 (merge 8339bf2).\nConventions: docs/conventions.md"
+  prompt: "Epic: 20261019-edit-todo. Review: FEAT-0002 (merge 3a24452), FEAT-0003 (merge 8339bf2).\nConventions: docs/rules/conventions.md"
 })
 ```
 
@@ -96,7 +96,7 @@ After `sbs reject`, spawn a new `dev` worker at the ticket's current level (same
 Ticket: <ID>. Epic: <epic>. Level: <level>. CHANGES REQUESTED.
 Findings: <the reject text>
 Branch: git switch ticket/<ID> && git merge dev
-Conventions: docs/conventions.md
+Conventions: docs/rules/conventions.md
 ```
 
 ## Reopen
@@ -109,5 +109,5 @@ A reopen sends a ticket back to in-progress at the next level (junior, middle, s
    Ticket: <ID>. Epic: <epic>. Level: middle. REOPENED.
    Context: <the same summary>
    Branch: git switch ticket/<ID> && git merge dev   (reuse the branch; if it was deleted: git switch -c ticket/<ID> dev)
-   Conventions: docs/conventions.md
+   Conventions: docs/rules/conventions.md
    ```

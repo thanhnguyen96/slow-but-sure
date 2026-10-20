@@ -59,7 +59,9 @@ When you spawn a lead, pass `model` and `effort` from `sbs models --json` (`lead
 Fixed paths. Subagents need only the epic name; they find the rest themselves.
 
 ```
-docs/conventions.md            project rules, not part of any epic (Step 1)
+docs/rules/                    PM-written rules for every agent, outside any epic (Step 1):
+  conventions.md               coding conventions: stack, layout, style, tests
+  commit.md                    commit rules
 docs/epics/<YYYYMMDD>-<slug>/  one epic per finished conversation with the user (sbs epic new <slug>)
   brief.md                     PM: decisions from grilling
   design.md                    PM: pages, elements, data-testid
@@ -102,7 +104,8 @@ Create tickets only for a new feature (`FEAT`), a bug fix (`BUG`), a large refac
 1. `tickets/config.json` missing: `sbs init`.
 2. Branch `dev` missing: `git branch dev <release>`. Switch the main checkout to `dev`.
 3. Fill `tickets/config.json` `commands` (setup, unit, build, lint, e2e, app) by inspecting the project. `app` starts the app; `sbs app` and `sbs e2e` run it in the background and stop it. Set `port` when `playwright.config.*` has no `baseURL` with a port. `setup` installs dependencies in a fresh worktree (`npm ci`, `pnpm install --frozen-lockfile`, ...); workers run it first, because a new worktree has no `node_modules`. `mergeChecks` lists which commands `sbs merge` runs; a check with an empty command is skipped with a warning, so leave none empty that the project has. Ask the user only about real choices. For a web project without Playwright, the INIT or first FEAT epic sets it up.
-4. `docs/conventions.md` missing: create it from `.claude/skills/slow-but-sure/templates/conventions.md`, filling every `<...>` from the real codebase (or the stack in the brief for a new project). Commit it on `dev`. Update it when an epic adds a rule.
+4. `docs/rules/conventions.md` missing (a new project: write it right after Gate 1, once the stack is decided; until then skip this item): create it from `.claude/skills/slow-but-sure/templates/conventions.md`, filling every `<...>` from the real codebase (or the stack in the brief for a new project). Commit it on `dev`. Update it when an epic adds a rule.
+5. `docs/rules/` holds the rules every agent must follow (`conventions.md` above, `commit.md`); you write them, no agent does. `docs/rules/commit.md` missing: read the user's `~/.claude/CLAUDE.md` and the project's `CLAUDE.md`, and write the commit rules agents must follow (message format `<ID>: <summary>`, any ban on `Co-Authored-By` or "Generated with" lines, language, signing, ...) as short imperative lines. If neither file says anything about commits, ask the user once whether to add an attribution trailer. Commit the folder on `dev`. Add a file there for any other cross-cutting rule the user states.
 
 ## Step 2: clarify (grilling)
 
@@ -110,6 +113,7 @@ Invoke the `grilling` skill and interview the user until the request is unambigu
 
 - Use AskUserQuestion: one decision at a time (up to 4 independent questions per call), never numbered free-text rounds.
 - Look facts up yourself. Ask the user only for decisions.
+- For a new project, or when the epic adds a technology, the tech stack is a decision for the user, not yours: language/runtime, frameworks, storage, unit-test runner, e2e tool and the file type of test files. Never assume one.
 - Cover goal, users, scope in/out, edge cases, error states, data, auth, performance, acceptance criteria, and what "done" looks like.
 
 Then `sbs epic new <slug>` and write `brief.md` in the new folder. It records the user's answers, nothing more: a product decision you notice while writing it (where filtering runs, an API shape, history behavior) is one more AskUserQuestion before Gate 1, not something you settle in the brief. Technical choices go in `plan.md`.
@@ -153,8 +157,8 @@ Write `plan.md`:
 
 Launch both leads in one message, `run_in_background: true`, with `model`/`effort` from `sbs models --json` and `name: "lead-dev-<epic>"` / `name: "lead-qa-<epic>"`. **One lead-dev and one lead-qa per epic, for the whole epic**: they hold its context. Spawn each once; after that, every later task for a lead (answer, BUG, regression, rerun) goes to the same lead with `SendMessage` (by its name), never a new `Agent` spawn. Spawn a second lead of a role only if the user asks for it explicitly. If a lead cannot be resumed (the SendMessage fails), tell the user before spawning a replacement. The prompt is just the epic and conventions; add a `Note:` only for something that is not in the epic docs:
 
-- **lead-dev:** `Epic: <epic>. Conventions: docs/conventions.md. Write dev-plan.md, create dev tickets, run the rounds (workers merge, a reviewer reviews each batch) until every dev ticket is in ready-to-test. Report back.`
-- **lead-qa:** `Epic: <epic>. Conventions: docs/conventions.md. Authoring mode: write qa-plan.md, create TEST tickets covering the dev tickets, have qa workers write and merge the Playwright tests, review them, report back. Do not run regression yet.`
+- **lead-dev:** `Epic: <epic>. Conventions: docs/rules/conventions.md. Write dev-plan.md, create dev tickets, run the rounds (workers merge, a reviewer reviews each batch) until every dev ticket is in ready-to-test. Report back.`
+- **lead-qa:** `Epic: <epic>. Conventions: docs/rules/conventions.md. Authoring mode: write qa-plan.md, create TEST tickets covering the dev tickets, have qa workers write and merge the Playwright tests, review them, report back. Do not run regression yet.`
 
 Each lead runs its whole part in one turn and returns one report. Wait for the completion notifications; don't poll the board or files. While they work, answer the user. If a lead returns a question, decide it or ask the user, then `SendMessage` that lead the answer in a `Note:` line (it picks up from the board). When one lead reports a problem in the other side's work (lead-dev: a test looks wrong; lead-qa: the app looks wrong), you route it: `sbs note` with the evidence and a `SendMessage` to the right lead, or a BUG ticket.
 
@@ -184,7 +188,7 @@ After "Approve", ask whether to merge `dev` into `<release>`. Only after a yes: 
 - Inside the ticket process, never write product code or e2e tests yourself.
 - Exactly one lead-dev and one lead-qa per epic, spawned once in Step 5. Never spawn another of either, and never respawn one for a new task: `SendMessage` the existing lead. Only an explicit user request overrides this.
 - Add `-b pm` to every `sbs` command that records an author (`new`, `note`, `start`, `mv`); without it the author defaults to the ticket's lead.
-- Follow the user's CLAUDE.md commit rules (`~/.claude/CLAUDE.md` and the project's) for your own commits; no `Co-Authored-By` trailer if they forbid it.
+- Follow `docs/rules/commit.md` for your own commits.
 - Use Bash, not PowerShell, for commands and file writes while the process is on: the role hook reads Bash commands, and Windows PowerShell 5.1 writes files with a BOM or in the ANSI codepage (a BOM in `tickets/config.json` once made `sbs merge` skip its checks). Use PowerShell only for something Bash can't do, and write files with the Write tool.
-- Give subagents the epic name and `docs/conventions.md`, never pasted copies of docs.
+- Give subagents the epic name and `docs/rules/conventions.md`, never pasted copies of docs.
 - Keep the user informed at gates and when something is blocked. Don't narrate every subagent step.

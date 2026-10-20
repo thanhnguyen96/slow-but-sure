@@ -20,7 +20,7 @@ export const DEFAULT_CONFIG = {
   // lead-dev may not write here (hook-enforced): tests belong to dev and qa workers.
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   // dev workers may not write here (hook-enforced): the board changes only through sbs, docs belong to the PM and leads.
-  devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
+  devBlocked: ['tickets/**', 'docs/epics/**', 'docs/rules/**'],
 };
 // Model + effort per subagent role and per worker level. Users edit .claude/slow-but-sure.models.json.
 // The PM is the main conversation: its model and effort are the user's own (/model, /effort).

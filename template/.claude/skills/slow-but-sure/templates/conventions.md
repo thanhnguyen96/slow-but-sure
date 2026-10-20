@@ -40,7 +40,7 @@ Other docs to follow: <CONTRIBUTING.md, CLAUDE.md, ... or "none">
 - Every new piece of logic gets tests: happy path, edge cases, error cases. No tests that only assert mocks were called.
 
 ## E2E tests (qa)
-- Playwright in `tests/e2e/`, one spec file per feature area, locate with `page.getByTestId(...)`.
+- Playwright in `tests/e2e/`, spec files `<*.spec.ts | *.spec.js | ...: the project's language>`, one per feature area, locate with `page.getByTestId(...)`.
 - Comment above every `test()`: `// Ticket: <DEV-ID> (<TEST-ID>) — ACn: <what it checks>`.
 - Arrange / Act / Assert visible in each test; no `waitForTimeout`; each test creates its own data.
 

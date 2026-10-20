@@ -9,9 +9,9 @@ Claude Code skill (`/slow-but-sure`, alias `/sbs`): ticket-driven software proce
 - **Models**: `.claude/slow-but-sure.models.json` (created on first `/sbs on`). `/sbs models` shows the table. Set the PM's model and effort yourself with `/model` and `/effort`.
 - **Board**: `tickets/{todo,in-progress,ready-to-review,ready-to-test,done}`, prefixes `FEAT/BUG/REF/INIT/TEST`. `tickets/README.md` describes every transition.
 - **Epics**: `docs/epics/<YYYYMMDD>-<slug>/` with fixed file names, so subagents need only the epic name. `merges.md` and `reviews.md` are written by `sbs`.
-- **Conventions**: `docs/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
+- **Conventions**: `docs/rules/conventions.md`, outside any epic, filled from the real codebase on the first ticketed request.
 - **/sbs-context**: model (effort), context size, output tokens and state of the PM and every subagent in this session.
-- **Role limits** (`hooks/sbs-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; dev and qa workers never run e2e; reviewer read-only (allowlisted commands); the app and Playwright tests start only via `sbs app` / `sbs e2e` / `sbs shot` (background app with a recorded pid, always stopped), and `sbs` never runs in the background. Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
+- **Role limits** (`hooks/sbs-guard.mjs`, subagents only; the PM keeps every permission): no agent pushes, resets --hard, skips hooks or touches the release branch. Each role runs only its own `sbs` commands (`init`, `mv`, `mode`, `epic new` stay with the PM). dev may not write `tickets/`, `docs/epics/` or `docs/rules/conventions.md`; qa/lead-qa only `qaWritable`; lead-dev no tests and no Playwright; dev and qa workers never run e2e; reviewer read-only (allowlisted commands); the app and Playwright tests start only via `sbs app` / `sbs e2e` / `sbs shot` (background app with a recorded pid, always stopped), and `sbs` never runs in the background. Shell writes (`>`, `rm`, `mv`, `sed -i`, ...) are checked too. Agents use Bash only (no PowerShell). Best effort against mistakes, not a sandbox.
 - **Git**: `ticket/<ID>` → `dev` (integration, via `sbs merge`) → release branch (`releaseBranch`: `master`, or `main` if only that exists; after regression and user approval).
 
 ## Install
@@ -69,7 +69,7 @@ template/.claude/
   skills/slow-but-sure/scripts/commands/        board (init/new/start/note/mv/ls/show/clean), merge,
                                                   review (approve/reject/reopen/done), epic, setup (models/mode), app (app, e2e, shot)
   skills/slow-but-sure/scripts/context.mjs      used by /sbs-context
-  skills/slow-but-sure/templates/conventions.md starting point for docs/conventions.md
+  skills/slow-but-sure/templates/conventions.md starting point for docs/rules/conventions.md
   skills/slow-but-sure/templates/tickets-README.md   copied to tickets/README.md by sbs init
   skills/sbs/SKILL.md                              /sbs alias
   skills/sbs-context/SKILL.md                      /sbs-context

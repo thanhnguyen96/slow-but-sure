@@ -5,7 +5,7 @@
 // File writes (Edit/Write, and shell redirects, rm, mv, cp, touch, mkdir, tee, sed -i):
 //   lead-qa, qa:  only inside `qaWritable` (tickets/config.json); never product code.
 //   lead-dev:     never inside `leadDevBlocked`; tests belong to dev and qa workers.
-//   dev:          never inside `devBlocked` (tickets/, docs/epics/, docs/conventions.md); the board changes only through `sbs`.
+//   dev:          never inside `devBlocked` (tickets/, docs/epics/, docs/rules/); the board changes only through `sbs`.
 //   reviewer:     nothing.
 // Bash:
 //   every role:   no git push, reset --hard, branch -D, --no-verify, checkout of the release branch.
@@ -28,7 +28,7 @@ const ROLES = ['lead-dev', 'dev', 'lead-qa', 'qa', 'reviewer'];
 const DEFAULTS = {
   qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'docs/epics/*/screenshots/**', 'tickets/*/TEST-*.md'],
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
-  devBlocked: ['tickets/**', 'docs/epics/**', 'docs/conventions.md'],
+  devBlocked: ['tickets/**', 'docs/epics/**', 'docs/rules/**'],
 };
 const SBS_ALLOWED = {
   dev: ['merge', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
