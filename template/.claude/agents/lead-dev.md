@@ -39,16 +39,15 @@ Don't paste these files into prompts. Subagents read them themselves.
 1. Read `docs/rules/conventions.md` and `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`, the mockups). Run `sbs ls -e <epic>`: if `dev-plan.md` and tickets already exist (a relaunch, or BUG tickets from the PM), continue from the board instead of planning again.
 2. Write `docs/epics/<epic>/dev-plan.md`: tickets, files touched, interfaces between tickets, mocks to use, and rounds. A round is a set of tickets that can run in parallel without touching the same files.
 3. Create the tickets: `sbs new <feat|bug|ref|init> "<title>" -e <epic> [-d FEAT-0001]`. Fill each ticket's Context, Scope (In and "Out (don't touch)"), **Contracts** (the interfaces from `dev-plan.md` it provides or uses, with exact shapes), Acceptance criteria and data-testid table. Small enough for one worker in one session. Commit `dev-plan.md` and the ticket edits.
-4. For each round:
-   1. `sbs start <ID>` for each ticket of the round.
-   2. Spawn one dev worker per ticket, all in one message, in the foreground (see Workers). The calls run in parallel and return when every worker has finished, each with its final report.
-   3. Spawn one reviewer for all the tickets of the round that were merged (see Reviewer). It returns APPROVE or CHANGES per ticket.
-   4. For each verdict:
-      - **APPROVE**: `sbs approve <ID>`. It moves the ticket to ready-to-test and removes the worktree and branch.
-      - **CHANGES**: `sbs reject <ID> "<findings, one line each: file:line, problem, fix>"`. It frees the branch. Spawn a fix worker at the same level (see Fixes).
-   5. A worker that reports `blocked` or failed twice on a conflict or on checks: reopen the ticket (see Reopen).
-   6. Repeat 3 to 5 for the fixed and reopened tickets until every ticket of the round is in ready-to-test. A ticket rejected a second time is reopened instead of fixed again.
-5. Repeat until every dev ticket of the epic is in ready-to-test. Run `sbs clean` at the end.
+4. Dispatch workers as tickets become free, not round by round:
+   1. Start with every ticket that nothing blocks (`depends_on` empty or all done). `sbs start <ID>` for each, then spawn one dev worker per ticket, all in one message, in the foreground (see Workers).
+   2. When a worker returns and its ticket is merged, look at the board: every ticket whose `depends_on` are now all merged gets a worker immediately, in the same turn, before you do anything else. Don't wait for the other workers of the batch to finish first, and don't save it for a later round.
+   3. A worker that reports `blocked` or failed twice on a conflict or on checks: reopen the ticket (see Reopen) and spawn its worker again.
+   4. Repeat until every dev ticket of the epic is merged and in ready-to-review.
+5. Review once, at the end (see Reviewer): one reviewer for every merged dev ticket of the epic. Then per verdict:
+   - **APPROVE**: `sbs approve <ID>`. It moves the ticket to ready-to-test and removes the worktree and branch.
+   - **CHANGES**: `sbs reject <ID> "<findings, one line each: file:line, problem, fix>"`. It frees the branch. Spawn a fix worker at the same level (see Fixes), then send those tickets back to the reviewer (a re-review, with the earlier findings). A ticket rejected a second time is reopened instead of fixed again.
+   Repeat until every dev ticket is in ready-to-test. Run `sbs clean` at the end.
 6. Report to the PM: tickets done (with level), review findings that were fixed, deviations from the spec, open risks.
 
 Never end your turn while work is out: your final message is your report to the PM, and nothing wakes you after it. Spawn workers and reviewers in the foreground (no `run_in_background`) and continue when they return. Don't poll the board or files.
@@ -73,13 +72,13 @@ A relaunch (you were restarted with tickets in in-progress whose worker is gone,
 
 ## Reviewer
 
-One reviewer per batch of merged tickets, the `reviewer` agent, with `model` and `effort` from `sbs models --json` (`reviewer`). Give it every ticket of the batch at once, so it also catches problems between tickets:
+One reviewer for the whole epic, only after every dev ticket is merged and in ready-to-review, the `reviewer` agent, with `model` and `effort` from `sbs models --json` (`reviewer`). Give it every dev ticket of the epic at once, so it also catches problems between tickets. Don't review between rounds: a batch of one ticket is not worth a review pass.
 
 ```
 Agent({
   subagent_type: "reviewer",
   model: "opus", effort: "medium",
-  description: "<epic> round 1 review",
+  description: "<epic> review",
   prompt: "Epic: 20261019-edit-todo. Review: FEAT-0002 (merge 3a24452), FEAT-0003 (merge 8339bf2).\nConventions: docs/rules/conventions.md"
 })
 ```
