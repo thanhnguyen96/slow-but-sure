@@ -58,6 +58,12 @@ sbs ls [status] [-e epic]   sbs show FEAT-0001   sbs epic   sbs clean   sbs mode
 
 Board changes are commits on `dev` in the main checkout; `sbs` finds the main checkout from any worktree. One writer at a time (lock in the git dir).
 
+## Tests
+
+`npm test` runs `test/*.test.mjs` (node:test, no dependencies): the board flow (`sbs` new/start/merge/approve/reject/reopen/done/clean, conflict and failed checks), the guard hook (role limits, worker activity log and nudge), `sbs watch` alerts and `install.mjs`. Each test installs the skill into a fresh git project under `sandbox/<name>/`.
+
+`sandbox/` is kept empty in git (everything in it is ignored). For a manual run, install into it and test there: `node install.mjs sandbox/<name>`.
+
 ## Layout
 
 ```
