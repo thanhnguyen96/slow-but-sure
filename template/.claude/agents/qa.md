@@ -26,6 +26,8 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 - Then run `commands.setup` from `tickets/config.json` in your worktree (a new worktree has no installed dependencies). If it is empty and the project has dependencies, report that to your lead.
 - Only write inside `tests/e2e/` (and `playwright.config.*` if the ticket says so). Never modify product code: a hook blocks it; don't work around it with shell commands. Never edit `tickets/` or `docs/`. Never push. Never spawn agents.
 - If the app seems wrong, don't fix it. Report it.
+- Don't study library internals: no reading `node_modules`, no probe scripts to find out how a library behaves (a hook blocks `node_modules`). Use what you know of its public API; if that is not enough, write the question in your report and stop.
+- You have a budget of tool calls (default 90, a warning from 60). Spend it on the ticket. When it runs out only git and `sbs` work: merge what is done or report blocked.
 - Commits: before your first commit, read `docs/rules/commit.md` (written by the PM) and follow it exactly. It overrides any default attribution, including a `Co-Authored-By` trailer or a "Generated with" line.
 - You never run e2e tests, not even your own spec: only lead-qa runs them, in regression mode, once dev and qa are both done. Check your tests with `npx playwright test --list <spec>` and by reading them against `design.md`. To look at the app, `sbs app start` / `sbs app stop`. A hook blocks running Playwright tests and starting the app any other way, and running `sbs` in the background.
 - Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs e2e <spec>`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that. The shell is already in your worktree.
@@ -33,9 +35,9 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 ## Test style
 
 - Locate elements with `page.getByTestId('<data-testid>')` and the exact ids from `design.md`.
-- A comment above every `test()`:
+- A comment above every `test()`. `ACn` is the acceptance criterion's number in `brief.md` (the ticket lists them that way), never a number of your own:
   ```ts
-  // Ticket: FEAT-0003 (TEST-0002) — AC1: valid login redirects to dashboard
+  // Ticket: FEAT-0003 (TEST-0002) — brief AC1: valid login redirects to dashboard
   test('valid login redirects to dashboard', async ({ page }) => { ... });
   ```
 - Plain Arrange, Act and Assert steps, descriptive names, no hidden helpers. Never `waitForTimeout`. Each test creates its own data and doesn't depend on other tests.
@@ -55,7 +57,7 @@ A `REOPENED` prompt has a context summary of what failed before; read it first. 
 Ticket: <ID>   Level: <level>   Status: merged | blocked
 Merged: ticket/<ID>@<branch head> as <merge commit>
 Spec files: ...
-Tests: <name> — <ticket comment>
+Tests: <name> — <ticket comment, with its brief AC>
 Checks: `playwright test --list` OK (n tests)
 Doubts (spec unclear / app seems wrong): ...
 ```

@@ -37,12 +37,16 @@ Don't paste these files into prompts. Subagents read them themselves.
 ## Steps
 
 1. Read `docs/rules/conventions.md` and `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`, the mockups). Run `sbs ls -e <epic>`: if `dev-plan.md` and tickets already exist (a relaunch, or BUG tickets from the PM), continue from the board instead of planning again.
-2. Write `docs/epics/<epic>/dev-plan.md`: tickets, files touched, interfaces between tickets, mocks to use, and rounds. A round is a set of tickets that can run in parallel without touching the same files.
-3. Create the tickets: `sbs new <feat|bug|ref|init> "<title>" -e <epic> [-d FEAT-0001]`. Fill each ticket's Context, Scope (In and "Out (don't touch)"), **Contracts** (the interfaces from `dev-plan.md` it provides or uses, with exact shapes), Acceptance criteria and data-testid table. Small enough for one worker in one session. Commit `dev-plan.md` and the ticket edits.
+2. Write `docs/epics/<epic>/dev-plan.md`: tickets, files touched, interfaces between tickets, mocks to use, and rounds. A round is a set of tickets that can run in parallel without touching the same files. It must also have:
+   - **Brief ACs** per ticket: the acceptance criteria of `brief.md` it implements, by their brief number.
+   - **Runtime and shared state:** where state lives (memory, file, DB) and whether requests, users or sessions share it. The e2e suite runs several Playwright workers against one app process; say what that means for this state, so lead-qa can plan around it.
+   - **Size:** a junior ticket touches about two product files or one page at most. Split UI work per page, with shared pieces (layout, styles, API client) in their own ticket first.
+   - **Self-check** per ticket: the unit tests it adds, or for UI the `sbs app start` route and what the worker looks at.
+3. Create the tickets: `sbs new <feat|bug|ref|init> "<title>" -e <epic> [-d FEAT-0001]`. Fill each ticket's Context (with `Brief ACs:`), Scope (In and "Out (don't touch)"), **Contracts** (the interfaces from `dev-plan.md` it provides or uses, with exact shapes), Acceptance criteria and data-testid table. Small enough for one worker in one session. Commit `dev-plan.md` and the ticket edits.
 4. Dispatch workers as tickets become free, not round by round:
    1. Start with every ticket that nothing blocks (`depends_on` empty or all done). `sbs start <ID>` for each, then spawn one dev worker per ticket, all in one message, in the foreground (see Workers).
    2. When a worker returns and its ticket is merged, look at the board: every ticket whose `depends_on` are now all merged gets a worker immediately, in the same turn, before you do anything else. Don't wait for the other workers of the batch to finish first, and don't save it for a later round.
-   3. A worker that reports `blocked` or failed twice on a conflict or on checks: reopen the ticket (see Reopen) and spawn its worker again.
+   3. A worker that reports `blocked` (also when its tool-call budget ran out) or failed twice on a conflict or on checks: reopen the ticket (see Reopen) and spawn its worker again.
    4. Repeat until every dev ticket of the epic is merged and in ready-to-review.
 5. Review once, at the end (see Reviewer): one reviewer for every merged dev ticket of the epic. Then per verdict:
    - **APPROVE**: `sbs approve <ID>`. It moves the ticket to ready-to-test and removes the worktree and branch.

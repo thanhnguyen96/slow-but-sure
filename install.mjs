@@ -16,7 +16,8 @@ const REMINDER_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-reminder.mjs"'
 // workspace-trust dialog and never run in -p sessions. The script itself filters on agent_type.
 const GUARD_CMD = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/sbs-guard.mjs"';
 // The guard also allows every call it passes, so auto mode's classifier does not block the process (see the script).
-const GUARD_MATCHER = 'Edit|Write|NotebookEdit|Bash|PowerShell|Agent';
+// Read|Glob|Grep: the worker call budget counts them, and workers may not read node_modules.
+const GUARD_MATCHER = 'Edit|Write|NotebookEdit|Bash|PowerShell|Agent|Read|Glob|Grep';
 // Added by the previous version; the guard's allow covers it now.
 const OLD_SBS_ALLOW = 'Bash(node .claude/skills/slow-but-sure/scripts/sbs.mjs:*)';
 // Hook commands and files of older versions (the interim simple-workflow name, the first tester guard), removed on install.
@@ -121,7 +122,7 @@ function mergeSettings() {
     settings.hooks[event] ??= [];
     const existing = settings.hooks[event].find((g) => (g.hooks || []).some((h) => h.command === command));
     if (existing) {
-      // Older installs ran the guard only on Edit|Write|NotebookEdit.
+      // Older installs ran the guard on fewer tools.
       if (matcher && existing.matcher !== matcher) {
         existing.matcher = matcher;
         console.log(`  updated ${event} hook matcher to ${matcher}`);

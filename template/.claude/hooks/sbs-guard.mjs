@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PreToolUse hook (project settings, matcher Edit|Write|NotebookEdit|Bash|PowerShell|Agent): role limits for slow-but-sure agents.
+// PreToolUse hook (project settings, matcher Edit|Write|NotebookEdit|Bash|PowerShell|Agent|Read|Glob|Grep): role limits for slow-but-sure agents.
 // Only subagents carry `agent_type`; the main conversation (PM) and other agents always pass.
 //
 // File writes (Edit/Write, and shell redirects, rm, mv, cp, touch, mkdir, tee, sed -i):
@@ -15,6 +15,10 @@
 //   workers, leads: no app server or Playwright test run outside `sbs app` / `sbs e2e` / `sbs shot` (they start, wait and stop it);
 //                 `sbs` never in the background (it returns on its own; a background run invites polling).
 //   reviewer:     read-only command allowlist.
+// Workers (dev, qa):
+//   call budget:  `workerCallBudget` (default warn 60, stop 90) tool calls per worker; from warn on it is told to wrap up,
+//                 from stop on only git and sbs run, so it merges or reports blocked and its lead reopens the ticket.
+//   no library source: nothing under node_modules/ (except .bin) is read or run.
 // A best-effort check against mistakes, not a sandbox. Exit 2 = block; stderr is shown to the agent.
 //
 // Every call that passes is allowed outright (permissionDecision "allow"), for the roles and, while the process is
@@ -22,6 +26,7 @@
 // checkout, compound commands, `cd` into a worktree) and agents cannot add allow rules themselves. The limits are
 // each agent's tools and the rules here.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const ROLES = ['lead-dev', 'dev', 'lead-qa', 'qa', 'reviewer'];
@@ -29,6 +34,7 @@ const DEFAULTS = {
   qaWritable: ['tests/e2e/**', 'playwright.config.*', 'docs/epics/*/qa-plan.md', 'docs/epics/*/screenshots/**', 'tickets/*/TEST-*.md'],
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/rules/**'],
+  workerCallBudget: { warn: 60, stop: 90 },
 };
 const SBS_ALLOWED = {
   dev: ['merge', 'app', 'show', 'ls', 'list', 'epic', 'models', 'help', ''],
@@ -48,8 +54,8 @@ try { input = JSON.parse(raw); } catch { process.exit(0); }
 const agent = input.agent_type;
 const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 
-function allow() {
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: 'slow-but-sure role check passed' } }));
+function allow(context) {
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: 'slow-but-sure role check passed', ...(context && { additionalContext: context }) } }));
   process.exit(0);
 }
 
@@ -105,13 +111,44 @@ function writeDenied(file) {
   return null;
 }
 
+const WORKER = agent === 'dev' || agent === 'qa';
+const LIBRARY = /node_modules[\\/](?!\.bin[\\/])/;
+const LIBRARY_MSG = 'may not read or run library source under node_modules/. Don\'t study how a library works inside; if its behavior is unclear, write it under Notes / Doubts in your report and stop.';
+
+// Worker call budget: a worker that keeps exploring holds its lead, who waits for it in the foreground.
+let note = '';
+if (WORKER) {
+  const budget = { ...DEFAULTS.workerCallBudget, ...(cfg.workerCallBudget || {}) };
+  const dir = path.join(os.tmpdir(), 'sbs-guard-calls');
+  const file = path.join(dir, `${String(input.agent_id || 'unknown').replace(/[^\w-]/g, '_')}.txt`);
+  let n = 0;
+  try { n = Number(fs.readFileSync(file, 'utf8')) || 0; } catch {}
+  n++;
+  try { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(file, String(n)); } catch {}
+  if (n >= budget.stop) {
+    const segs = input.tool_name === 'Bash' ? parse(String(toolInput.command || '')) : [];
+    const wrapUp = segs.length && segs.every((w) => {
+      const b = path.basename(w[0] || '').replace(/\.exe$/i, '');
+      return b === 'git' || b === 'node' && w.some((x) => /(^|[\\/])sbs\.mjs$/.test(x));
+    });
+    if (!wrapUp) block(`has used ${n} tool calls (budget ${budget.stop}). Stop working on it: only git and sbs commands run now. If the work is committed and the checks pass, \`sbs merge <ID>\`; otherwise end with your final report, Status: blocked, with what you tried, what you found and what is left.`);
+  } else if (n >= budget.warn) {
+    note = `slow-but-sure: tool call ${n} of ${budget.stop}. Wrap up: finish the ticket's scope, commit, \`sbs merge\`, report. If you can't finish, report blocked with what you found.`;
+  }
+}
+
+if (['Read', 'Glob', 'Grep'].includes(input.tool_name)) {
+  if (WORKER && LIBRARY.test(`${toolInput.file_path || ''} ${toolInput.path || ''} ${toolInput.pattern || ''} ${toolInput.glob || ''}`)) block(LIBRARY_MSG);
+  allow(note);
+}
+
 if (input.tool_name === 'PowerShell') block('may not use PowerShell; use Bash so the role check can see the command.');
 if (input.tool_name !== 'Bash') {
   const target = toolInput.file_path || toolInput.notebook_path || toolInput.path;
-  if (!target) allow();
+  if (!target) allow(note);
   const why = writeDenied(path.resolve(fromBash(input.cwd || process.cwd()), fromBash(target)));
   if (why) block(why);
-  allow();
+  allow(note);
 }
 
 // ---------- Bash ----------
@@ -219,6 +256,7 @@ for (let words of parse(String(toolInput.command || ''))) {
   if (['sudo', 'command', 'exec', 'time', 'xargs', 'env'].includes(cmd) && rest.length) [cmd, ...rest] = rest;
   const base = path.basename(cmd).replace(/\.exe$/i, '');
   const line = words.join(' ');
+  if (WORKER && words.some((w) => LIBRARY.test(w))) block(LIBRARY_MSG);
 
   if (['bash', 'sh', 'zsh', 'pwsh', 'powershell', 'cmd', 'eval'].includes(base)) {
     block(`may not start another shell (${base}); run the command directly so the role check can see it.`);
@@ -286,4 +324,4 @@ for (let words of parse(String(toolInput.command || ''))) {
     }
   }
 }
-allow();
+allow(note);

@@ -76,6 +76,6 @@ Body: Context, Scope (In / Out), Contracts, Acceptance criteria, data-testid tab
 
 ## Other files
 
-- `config.json`: branches, project commands (unit, build, lint, e2e, app), `mergeChecks` (commands `sbs merge` runs), `qaWritable` (where lead-qa and qa may write), `leadDevBlocked` (test paths lead-dev may not write).
+- `config.json`: branches, project commands (unit, build, lint, e2e, app), `mergeChecks` (commands `sbs merge` runs), `qaWritable` (where lead-qa and qa may write), `leadDevBlocked` (test paths lead-dev may not write), `workerCallBudget` (tool calls per dev/qa worker: warn, then only git and sbs).
 - `.counters.json`: last number used per prefix. Don't edit.
 - `docs/epics/<epic>/merges.md` and `reviews.md`: written by `sbs`; the trail of every merge and review.

@@ -28,16 +28,16 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 - Commits: before your first commit, read `docs/rules/commit.md` (written by the PM) and follow it exactly. It overrides any default attribution, including a `Co-Authored-By` trailer or a "Generated with" line.
 - Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs e2e`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that.
 - You are the only role that runs e2e (lead-dev and all workers never do), and only in regression mode: in authoring mode don't run the suite. Your qa workers don't run tests either (you verify independently at regression; they care only about their own tests); if one reports a run, tell it not to.
-- To steer a worker that is still running, `SendMessage` it (name or agentId from its spawn). To abort one that is stuck or off track, `TaskStop` it, check `git status` in its worktree, then relaunch.
+- To steer a worker that is still running, `SendMessage` it (name or agentId from its spawn). To abort one that is stuck or off track, `TaskStop` it, check `git status` in its worktree, then relaunch. A worker that reports blocked (also when its tool-call budget ran out) is reopened (`sbs reopen`, one level up) with what it found, not relaunched at the same level.
 - Run e2e only with `sbs e2e` (the whole suite) or `sbs e2e <spec file> -g "<name>"` (a subset; Playwright flags such as `--repeat-each=5` pass through). It starts the app if Playwright doesn't, runs with `--reporter=line`, always stops the app and frees the port, and stops a run after 9 minutes. For debugging use `sbs app start` / `sbs app stop`; for screenshots `sbs shot`. A hook blocks starting the app or Playwright tests any other way, and running `sbs` in the background. Never use `playwright show-report`.
 
 ## Test style (you and your workers)
 
 - Playwright in `tests/e2e/`, one spec file per feature area.
 - Locate elements with `page.getByTestId('<data-testid>')` and the ids from `design.md`. Role or text locators only for content the spec defines as text.
-- Every `test()` gets a comment naming its tickets:
+- Every `test()` gets a comment naming its tickets and the acceptance criterion by its number in `brief.md` (the PM traces brief ACs to tests from these comments):
   ```ts
-  // Ticket: FEAT-0003 (TEST-0002) — AC2: wrong password shows error banner
+  // Ticket: FEAT-0003 (TEST-0002) — brief AC2: wrong password shows error banner
   test('login with wrong password shows error', async ({ page }) => {
     await page.goto('/login');
     await page.getByTestId('login-form-email-input').fill('a@b.co');
@@ -51,8 +51,11 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
 ## Authoring mode
 
 1. Read `docs/rules/conventions.md`, `docs/epics/<epic>/` (`brief.md`, `design.md`, `plan.md`; the Automation test part of `plan.md` lists the scenarios) and the dev tickets (`sbs ls -e <epic>`, `sbs show <ID>`).
-2. Write `docs/epics/<epic>/qa-plan.md`: scenarios per acceptance criterion, test data, which `data-testid`s each uses. Commit it.
-3. Create TEST tickets: `sbs new test "<title>" -e <epic> -c FEAT-0001,FEAT-0002`. Fill the scenarios and `data-testid`s. Commit.
+2. Write `docs/epics/<epic>/qa-plan.md`: scenarios per acceptance criterion (by its `brief.md` number), test data, which `data-testid`s each uses. It must also settle:
+   - **Parallel runs:** how many Playwright workers run against the one app process, and how each test keeps its data apart from tests running at the same time. Read where the app keeps state (`plan.md`, `dev-plan.md`): if it is shared, no test resets or wipes it while others run; say how tests isolate instead (own records, own session) or run serially.
+   - **Seeding:** a test that seeds data over HTTP and then checks it in the page seeds through `page.request` (it shares the page's cookies), not the standalone `request` fixture.
+   Commit it.
+3. Create TEST tickets: `sbs new test "<title>" -e <epic> -c FEAT-0001,FEAT-0002`. Fill the scenarios and `data-testid`s. List them under the brief's AC numbers (`brief AC3: ...`) and fill `Brief ACs:`; never renumber ACs per ticket. Commit.
 4. `sbs start <TEST-ID>`, then spawn the workers in one message, in the foreground (no `run_in_background`); they run in parallel and return with their final reports:
    ```
    Agent({

@@ -32,6 +32,8 @@ A `REOPENED` prompt has a context summary of what failed before. Read it first a
 - To try the app, `sbs app start` (background, prints the URL) and `sbs app stop` before you report. A hook blocks starting it any other way, and running `sbs` in the background.
 - Run every `sbs` command as its own plain command: `node .claude/skills/slow-but-sure/scripts/sbs.mjs merge <ID>`. No `S="...sbs.mjs"; $S ...`, no `cd <dir> &&`, no `2>&1`, no `| tail`. `sbs` prints its own summary; read that. The shell is already in your worktree.
 - If the ticket is unclear or you are stuck after a reasonable attempt, stop and report the question. Don't guess at product behavior.
+- Don't study library internals: no reading `node_modules`, no probe scripts to find out how a library behaves (a hook blocks `node_modules`). Use what you know of its public API; if that is not enough, write the question in your report and stop.
+- You have a budget of tool calls (default 90, a warning from 60). Spend it on the ticket. When it runs out only git and `sbs` work: merge what is done or report blocked.
 
 ## Done: merge it yourself
 

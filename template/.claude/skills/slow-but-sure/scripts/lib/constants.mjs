@@ -21,6 +21,8 @@ export const DEFAULT_CONFIG = {
   leadDevBlocked: ['tests/**', '**/*.test.*', '**/*.spec.*', 'playwright.config.*'],
   // dev workers may not write here (hook-enforced): the board changes only through sbs, docs belong to the PM and leads.
   devBlocked: ['tickets/**', 'docs/epics/**', 'docs/rules/**'],
+  // Tool calls per dev/qa worker (hook-enforced): from warn it is told to wrap up, from stop only git and sbs run.
+  workerCallBudget: { warn: 60, stop: 90 },
 };
 // Model + effort per subagent role and per worker level. Users edit .claude/slow-but-sure.models.json.
 // The PM is the main conversation: its model and effort are the user's own (/model, /effort).

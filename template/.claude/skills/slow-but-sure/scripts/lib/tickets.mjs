@@ -90,7 +90,8 @@ export function ticketTemplate(id, title, epic) {
 # ${id}: ${title}
 
 ## Context
-${epic ? `Epic: docs/epics/${epic}/ (brief.md, design.md, plan.md, dev-plan.md / qa-plan.md)\n` : ''}<!-- why this ticket exists; which sections of the epic docs it implements -->
+${epic ? `Epic: docs/epics/${epic}/ (brief.md, design.md, plan.md, dev-plan.md / qa-plan.md)\n` : ''}Brief ACs: <!-- acceptance criteria of brief.md this ticket implements, by their brief number: AC2, AC5 -->
+<!-- why this ticket exists; which sections of the epic docs it implements -->
 
 ## Scope
 - In:

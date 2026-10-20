@@ -41,7 +41,7 @@ Other docs to follow: <CONTRIBUTING.md, CLAUDE.md, ... or "none">
 
 ## E2E tests (qa)
 - Playwright in `tests/e2e/`, spec files `<*.spec.ts | *.spec.js | ...: the project's language>`, one per feature area, locate with `page.getByTestId(...)`.
-- Comment above every `test()`: `// Ticket: <DEV-ID> (<TEST-ID>) — ACn: <what it checks>`.
+- Comment above every `test()`: `// Ticket: <DEV-ID> (<TEST-ID>) — brief ACn: <what it checks>`, with `n` the acceptance criterion's number in the epic's `brief.md`.
 - Arrange / Act / Assert visible in each test; no `waitForTimeout`; each test creates its own data.
 
 ## Git
