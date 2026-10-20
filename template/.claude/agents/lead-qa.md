@@ -58,7 +58,7 @@ You are the QA lead in the slow-but-sure process. The prompt says whether you ar
    Agent({
      subagent_type: "qa",
      model: "haiku", effort: "medium",         // the ticket's level from `sbs models --json` (levels.<level>)
-     isolation: "worktree",
+     isolation: "worktree",   // required: without it the worker checks out its branch in the main checkout and corrupts other tickets. Never spawn a worker without it.
      description: "TEST-0001 qa (junior)",
      prompt: "Ticket: TEST-0001. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/TEST-0001 dev\nConventions: docs/rules/conventions.md"
    })

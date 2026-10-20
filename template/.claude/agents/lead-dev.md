@@ -60,7 +60,7 @@ Workers are the `dev` agent. Spawn each with the ticket's level `model` and `eff
 Agent({
   subagent_type: "dev",
   model: "haiku", effort: "medium",         // junior   (middle: sonnet/medium, senior: opus/medium)
-  isolation: "worktree",
+  isolation: "worktree",   // required: without it the worker checks out its branch in the main checkout and corrupts other tickets. Never spawn a worker without it.
   description: "FEAT-0002 dev (junior)",
   prompt: "Ticket: FEAT-0002. Epic: 20261019-edit-todo. Level: junior.\nBranch: git switch -c ticket/FEAT-0002 dev\nConventions: docs/rules/conventions.md"
 })
