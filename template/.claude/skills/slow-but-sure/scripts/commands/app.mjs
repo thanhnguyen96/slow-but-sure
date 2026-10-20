@@ -68,10 +68,14 @@ function killTree(pid) {
   }
 }
 
+// Polls from 50ms up to 200ms: a check costs ~2ms, and a longer cap overshoots the moment the port opens.
 async function waitFor(check, seconds) {
-  for (let i = 0; i < seconds * 2; i++) {
+  let delay = 50;
+  const deadline = Date.now() + seconds * 1000;
+  while (Date.now() < deadline) {
     if (await check()) return true;
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay * 2, 200);
   }
   return false;
 }

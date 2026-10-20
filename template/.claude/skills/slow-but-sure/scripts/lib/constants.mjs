@@ -44,6 +44,6 @@ export const MODEL_ROWS = [
 ];
 export const MODEL_NOTES = { haiku: 'fastest, cheapest', sonnet: 'balanced', opus: 'strongest reasoning', inherit: 'same as caller' };
 export const EFFORT_NOTES = { low: 'quick', medium: 'balanced', high: 'careful', xhigh: 'very careful', max: 'deepest, slowest' };
-export const DIRTY_WAIT_S = 120;
+export const DIRTY_WAIT_S = 30;
 export const LOCK_WAIT_MS = 15 * 60 * 1000;
 export const LOCK_STALE_MS = 30 * 60 * 1000;

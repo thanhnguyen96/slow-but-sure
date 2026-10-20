@@ -109,9 +109,9 @@ export function guardMain(flags, { clean = false } = {}) {
   if (clean) {
     // A lead may be between an edit and its commit: wait a little before giving up.
     let dirty = dirtyFiles();
-    for (let i = 0; dirty && i < DIRTY_WAIT_S / 5; i++) {
-      if (!i) console.log(`main checkout has uncommitted changes; waiting up to ${DIRTY_WAIT_S}s for the lead to commit them:\n${dirty}`);
-      sleep(5000);
+    if (dirty) console.log(`main checkout has uncommitted changes; waiting up to ${DIRTY_WAIT_S}s for the lead to commit them:\n${dirty}`);
+    for (const until = Date.now() + DIRTY_WAIT_S * 1000; dirty && Date.now() < until;) {
+      sleep(2000);
       dirty = dirtyFiles();
     }
     if (dirty) die(`the main checkout still has uncommitted changes:\n${dirty}\nThey are not yours: don't commit, stash or revert them. Report this list to your lead (a lead reports it to the PM).`);
@@ -143,13 +143,17 @@ export function freeBranch(branch) {
 export function cleanupTicket(branch) {
   if (!IN_GIT || !branch) return;
   const dev = config().integrationBranch;
-  for (const wt of worktrees().filter((w) => w.branch === branch && w.path !== MAIN)) {
-    if (tryGit(['worktree', 'remove', wt.path]) === null) console.log(`  could not remove worktree ${wt.path} (dirty or in use); remove it later with \`sbs clean\``);
-    else console.log(`  removed worktree ${wt.path}`);
+  // One worktree listing: the removed ones are dropped from it instead of listing again.
+  const checkedOut = new Set();
+  for (const wt of worktrees()) {
+    if (wt.branch === branch && wt.path !== MAIN) {
+      if (tryGit(['worktree', 'remove', wt.path]) !== null) { console.log(`  removed worktree ${wt.path}`); continue; }
+      console.log(`  could not remove worktree ${wt.path} (dirty or in use); remove it later with \`sbs clean\``);
+    }
+    checkedOut.add(wt.branch);
   }
   tryGit(['worktree', 'prune']);
   const merged = (tryGit(['branch', '--merged', dev, '--format=%(refname:short)']) || '').split('\n').filter(Boolean);
-  const checkedOut = new Set(worktrees().map((w) => w.branch));
   for (const b of merged) {
     if (checkedOut.has(b)) continue;
     if (b === branch || /^worktree-agent-/.test(b)) {
